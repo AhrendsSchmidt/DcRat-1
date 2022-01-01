@@ -12,11 +12,11 @@ namespace Server
         private Socket listener { get; set; }
         private static ManualResetEvent allDone = new ManualResetEvent(false);
 
-        public void Connect(object port)
+        public void Connect()
         {
             try
             {
-                IPEndPoint IpEndPoint = new IPEndPoint(IPAddress.Any, Convert.ToInt32(port));
+                IPEndPoint IpEndPoint = new IPEndPoint(IPAddress.Any, Settings.Port);
                 listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                 {
                     SendBufferSize = 50 * 1024,

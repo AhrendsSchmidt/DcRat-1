@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading;
 using Server.MessagePack;
 
@@ -9,9 +10,16 @@ namespace Server
         public static System.Timers.Timer tim = new System.Timers.Timer(1000);
         static void Main(string[] args)
         {
+#if DEBUG
+            Settings.XorKey = "qwqdanchun";
+            Settings.Port = 8848;
+#else
+            Settings.XorKey = args[1];
+            Settings.Port = Convert.ToInt32(args[0]);
+#endif
             Listener listener = new Listener();
-            Thread thread = new Thread(new ParameterizedThreadStart(listener.Connect));
-            thread.Start(8848);
+            Thread thread = new Thread(new ThreadStart(listener.Connect));
+            thread.Start();
             tim.Elapsed += Tim_Elapsed;
             tim.Start();
         }

