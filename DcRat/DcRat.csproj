@@ -33,6 +33,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -140,6 +141,7 @@
     <Compile Include="SingleForms\singleFormScreen.Designer.cs">
       <DependentUpon>singleFormScreen.cs</DependentUpon>
     </Compile>
+    <Compile Include="Connection.cs" />
     <EmbeddedResource Include="ChildForms\childFormAbout.resx">
       <DependentUpon>childFormAbout.cs</DependentUpon>
     </EmbeddedResource>

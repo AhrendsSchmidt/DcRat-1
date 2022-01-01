@@ -311,6 +311,7 @@ namespace DcRat
             this.Name = "FormMain";
             this.Opacity = 0.97D;
             this.Text = "DcRat";
+            this.Load += new System.EventHandler(this.FormMain_Load);
             this.paneltop.ResumeLayout(false);
             this.panelleft.ResumeLayout(false);
             this.ResumeLayout(false);
