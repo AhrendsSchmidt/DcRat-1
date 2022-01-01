@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
-using Server.MessagePack;
+using MessagePack;
 
 namespace Server
 {

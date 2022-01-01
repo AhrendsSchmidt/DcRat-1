@@ -58,6 +58,8 @@
     <Compile Include="ChildForms\childFormBuilder.Designer.cs">
       <DependentUpon>childFormBuilder.cs</DependentUpon>
     </Compile>
+    <Compile Include="Controls\ListViewColumnSorter.cs" />
+    <Compile Include="Controls\Optimization.cs" />
     <Compile Include="SingleForms\singleFormDevice.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -484,6 +486,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\dump_dark.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Helper\" />
+    <Folder Include="Socket\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MessagePack\MessagePack.csproj">
+      <Project>{87254b4c-9c8d-4f20-ad9a-530cb9942863}</Project>
+      <Name>MessagePack</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

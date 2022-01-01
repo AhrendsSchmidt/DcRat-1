@@ -1,4 +1,4 @@
-﻿using Client.MessagePack;
+﻿using MessagePack;
 using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.Devices;
 using System;

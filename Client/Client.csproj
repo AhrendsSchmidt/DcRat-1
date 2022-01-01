@@ -45,11 +45,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MessagePack\BytesTools.cs" />
-    <Compile Include="MessagePack\MsgPack.cs" />
-    <Compile Include="MessagePack\MsgPackType.cs" />
-    <Compile Include="MessagePack\ReadTools.cs" />
-    <Compile Include="MessagePack\WriteTools.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Properties\Resources.resx">
@@ -70,6 +65,12 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MessagePack\MessagePack.csproj">
+      <Project>{87254b4c-9c8d-4f20-ad9a-530cb9942863}</Project>
+      <Name>MessagePack</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

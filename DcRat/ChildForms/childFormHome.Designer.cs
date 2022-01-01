@@ -30,7 +30,7 @@ namespace DcRat.ChildForms
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.ListViewItem listViewItem3 = new System.Windows.Forms.ListViewItem(new string[] {
+            System.Windows.Forms.ListViewItem listViewItem1 = new System.Windows.Forms.ListViewItem(new string[] {
             "127.0.0.1",
             "China",
             "test",
@@ -42,7 +42,16 @@ namespace DcRat.ChildForms
             "Windows Defender",
             "0ms",
             "Program"}, -1);
-            System.Windows.Forms.ListViewItem listViewItem4 = new System.Windows.Forms.ListViewItem("123");
+            System.Windows.Forms.ListViewItem listViewItem2 = new System.Windows.Forms.ListViewItem(new string[] {
+            "123",
+            "American",
+            "Default",
+            "asdfghjkl",
+            "28718/User",
+            "Windows 7",
+            "False",
+            "",
+            ""}, -1);
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(childFormHome));
             this.toolStripMain = new System.Windows.Forms.ToolStrip();
             this.toolStripButtoncmd = new System.Windows.Forms.ToolStripButton();
@@ -285,22 +294,21 @@ namespace DcRat.ChildForms
             this.listViewHome.Font = new System.Drawing.Font("Segoe UI Semibold", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.listViewHome.ForeColor = System.Drawing.SystemColors.WindowText;
             this.listViewHome.FullRowSelect = true;
-            this.listViewHome.HeaderStyle = System.Windows.Forms.ColumnHeaderStyle.Nonclickable;
             this.listViewHome.HideSelection = false;
-            listViewItem3.StateImageIndex = 0;
+            listViewItem1.StateImageIndex = 0;
             this.listViewHome.Items.AddRange(new System.Windows.Forms.ListViewItem[] {
-            listViewItem3,
-            listViewItem4});
+            listViewItem1,
+            listViewItem2});
             this.listViewHome.LargeImageList = this.imageListicon;
             this.listViewHome.Location = new System.Drawing.Point(0, 0);
             this.listViewHome.MultiSelect = false;
             this.listViewHome.Name = "listViewHome";
-            this.listViewHome.OwnerDraw = true;
             this.listViewHome.Size = new System.Drawing.Size(981, 273);
             this.listViewHome.SmallImageList = this.imageListblank;
             this.listViewHome.TabIndex = 0;
             this.listViewHome.UseCompatibleStateImageBehavior = false;
             this.listViewHome.View = System.Windows.Forms.View.Details;
+            this.listViewHome.ColumnClick += new System.Windows.Forms.ColumnClickEventHandler(this.listViewHome_ColumnClick);
             this.listViewHome.DrawColumnHeader += new System.Windows.Forms.DrawListViewColumnHeaderEventHandler(this.listViewHome_DrawColumnHeader);
             this.listViewHome.DrawItem += new System.Windows.Forms.DrawListViewItemEventHandler(this.listViewHome_DrawItem);
             this.listViewHome.SelectedIndexChanged += new System.EventHandler(this.listViewHome_SelectedIndexChanged);
@@ -417,6 +425,7 @@ namespace DcRat.ChildForms
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "childFormHome";
             this.Text = "childFormMain";
+            this.Load += new System.EventHandler(this.childFormHome_Load);
             this.toolStripMain.ResumeLayout(false);
             this.toolStripMain.PerformLayout();
             this.splitContainerHome.Panel1.ResumeLayout(false);

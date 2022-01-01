@@ -1,4 +1,5 @@
-﻿using DcRat.Properties;
+﻿using DcRat.Controls;
+using DcRat.Properties;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -13,6 +14,9 @@ namespace DcRat.ChildForms
 {
     public partial class childFormTasks : Form
     {
+
+        private ListViewColumnSorter lvwColumnSorter;
+
         public childFormTasks()
         {
             InitializeComponent();
@@ -179,6 +183,38 @@ namespace DcRat.ChildForms
                     item.BackColor = Settings.Default.darkTheme ? Settings.Default.colorlistviewdark : Settings.Default.colorlistview;
                 }
             }
+        }
+
+        private void listViewtasks_ColumnClick(object sender, ColumnClickEventArgs e)
+        {
+            if (e.Column == lvwColumnSorter.SortColumn)
+            {
+                if (lvwColumnSorter.Order == SortOrder.Ascending)
+                {
+                    lvwColumnSorter.Order = SortOrder.Descending;
+                }
+                else
+                {
+                    lvwColumnSorter.Order = SortOrder.Ascending;
+                }
+            }
+            else
+            {
+                lvwColumnSorter.SortColumn = e.Column;
+                lvwColumnSorter.Order = SortOrder.Ascending;
+            }
+            try
+            {
+                this.listViewtasks.Sort();
+            }
+            catch { }
+        }
+
+        private void childFormTasks_Load(object sender, EventArgs e)
+        {
+            Optimization.EnableListviewDoubleBuffer(listViewtasks);
+            lvwColumnSorter = new ListViewColumnSorter();
+            this.listViewtasks.ListViewItemSorter = lvwColumnSorter;
         }
     }
 }
