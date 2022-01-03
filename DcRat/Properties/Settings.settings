@@ -44,5 +44,11 @@
     <Setting Name="Port" Type="System.String" Scope="User">
       <Value Profile="(Default)">8848</Value>
     </Setting>
+    <Setting Name="Received" Type="System.Int64" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="Sent" Type="System.String" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

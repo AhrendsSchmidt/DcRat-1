@@ -8,6 +8,8 @@ namespace Server
 {
     class Helper
     {
+        public static object LockReceivedSendValue { get; set; }
+
         public static byte[] Xor(byte[] buffer)
         {
             char[] key = Settings.XorKey.ToCharArray();

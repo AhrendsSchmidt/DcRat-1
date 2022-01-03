@@ -10,7 +10,6 @@ namespace Server
     class Listener
     {
         private Socket listener { get; set; }
-        private static ManualResetEvent allDone = new ManualResetEvent(false);
 
         public void Connect()
         {
@@ -27,12 +26,7 @@ namespace Server
                 listener.Bind(IpEndPoint);
                 listener.Listen(20);
 
-                while (true)
-                {
-                    allDone.Reset();
-                    listener.BeginAccept(EndAccept, null);
-                    allDone.WaitOne();
-                }
+                listener.BeginAccept(EndAccept, null);
             }
             catch (Exception ex)
             {
@@ -48,7 +42,10 @@ namespace Server
             }
             catch { }
 
-            finally { allDone.Set(); }
+            finally 
+            {
+                listener.BeginAccept(EndAccept, null);
+            }
         }
     }
 }

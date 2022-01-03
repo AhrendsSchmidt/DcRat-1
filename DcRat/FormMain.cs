@@ -1,5 +1,6 @@
 ﻿using DcRat.ChildForms;
 using DcRat.Properties;
+using DcRat.TCPSocket;
 using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
@@ -15,7 +16,7 @@ namespace DcRat
         childFormBuilder childForm_Builder;
         childFormSettings childForm_Settings;
         childFormTasks childForm_Tasks;
-        childFormHome childForm_Home = new childFormHome();
+        public static childFormHome childForm_Home = new childFormHome();
         bool childFormAbout_on = false;
         bool childFormBuilder_on = false;
         bool childFormSettings_on = false;
@@ -244,7 +245,7 @@ namespace DcRat
 
         private void buttonclose_Click(object sender, EventArgs e)
         {
-            Application.Exit();
+            Environment.Exit(0);
         }
         private void Move_panel_side(Control btn)
         {
@@ -348,9 +349,26 @@ namespace DcRat
 
         private void FormMain_Load(object sender, EventArgs e)
         {
+            using (FormInit formInit = new FormInit())
+            {
+                formInit.ShowDialog();
+            }
+            
             new Thread(() =>
             {
-                Connection.InitializeClient(); 
+                while (true)
+                {
+                    try
+                    {
+                        if (!Connection.IsConnected)
+                        {
+                            Connection.Reconnect();
+                            Connection.InitializeClient();
+                        }
+                    }
+                    catch { }
+                    Thread.Sleep(5000);
+                }
             }).Start();
         }
     }

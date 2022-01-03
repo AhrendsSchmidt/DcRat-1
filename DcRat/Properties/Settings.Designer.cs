@@ -190,5 +190,29 @@ namespace DcRat.Properties {
                 this["Port"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public long Received {
+            get {
+                return ((long)(this["Received"]));
+            }
+            set {
+                this["Received"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public string Sent {
+            get {
+                return ((string)(this["Sent"]));
+            }
+            set {
+                this["Sent"] = value;
+            }
+        }
     }
 }
