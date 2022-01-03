@@ -337,6 +337,12 @@ namespace Client
                             }
                             break;
                         }
+
+                    case "Controler":
+                        {
+                            MessageBox.Show("123");
+                            break;
+                        }
                 }
             }
             catch (Exception ex)

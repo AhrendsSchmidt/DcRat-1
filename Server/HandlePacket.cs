@@ -68,7 +68,23 @@ namespace Server
                     case "Controler":
                         {
                             //Check();
-                            Console.WriteLine("Controler Connected");
+                            if (unpack_msgpack.ForcePathObject("Type").AsString== "Connect")
+                            {                                
+                                Console.WriteLine("Controler Connected");
+                            }
+                            else if (unpack_msgpack.ForcePathObject("Type").AsString == "Command")
+                            {
+                                Console.WriteLine("Command");
+                                foreach (Clients CL in Settings.Online)
+                                {
+                                    if (CL.Info.HWID == unpack_msgpack.ForcePathObject("Client").AsString)
+                                    {
+                                        
+                                        ThreadPool.QueueUserWorkItem(CL.BeginSend, unpack_msgpack.Encode2Bytes());
+                                    }
+                                }
+                            }
+                            
                             Settings.Controler.Add(client);
                         }
                         break;
@@ -81,13 +97,7 @@ namespace Server
 
                     default:
                         {
-                            foreach (Clients CL in Settings.Controler.ToList())
-                            {
-                                if (client.ID == unpack_msgpack.ForcePathObject("ID").AsString)
-                                {
-                                    ThreadPool.QueueUserWorkItem(CL.BeginSend, unpack_msgpack.Encode2Bytes());
-                                }
-                            }
+                            
                         }
                         break;
                 }

