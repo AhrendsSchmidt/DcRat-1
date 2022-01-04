@@ -40,7 +40,7 @@ namespace Server
                 {
                     if (Helper.DiffSeconds(CL.LastPing, DateTime.Now) > 20)
                     {
-                        CL.Disconnected();
+                        //CL.Disconnected();
                     }
                     else
                     {
@@ -56,7 +56,7 @@ namespace Server
                 {
                     if (Helper.DiffSeconds(CL.LastPing, DateTime.Now) > 20)
                     {
-                        CL.Disconnected();
+                        //CL.Disconnected();
                     }
                     else
                     {
