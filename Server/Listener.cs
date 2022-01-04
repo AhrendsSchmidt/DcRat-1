@@ -20,8 +20,6 @@ namespace Server
                 {
                     SendBufferSize = 50 * 1024,
                     ReceiveBufferSize = 50 * 1024,
-                    ReceiveTimeout = -1,
-                    SendTimeout = -1,
                 };
                 listener.Bind(IpEndPoint);
                 listener.Listen(20);

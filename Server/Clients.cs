@@ -21,6 +21,8 @@ namespace Server
         private object EndSendSync { get; } = new object();
         public long BytesRecevied { get; set; }
         public ClientInfo Info { get; set; }
+        public bool Controler { get; set; }
+        public DateTime LastPing { get; set; }
 
         public class ClientInfo
         {
@@ -34,7 +36,7 @@ namespace Server
             public string Path;
             public string Active;
             public string Version;
-            public long Permission;
+            public string Permission;
             public string AV;
             public string Group;
             public DateTime LastPing;
@@ -45,6 +47,7 @@ namespace Server
             ClientSocket = socket;
             ClientBuffer = new byte[4];
             ClientMS = new MemoryStream();
+            Controler = false;
             Info = new ClientInfo();
             Info.IP = ClientSocket.RemoteEndPoint.ToString().Split(':')[0];
             ClientSocket.BeginReceive(ClientBuffer, 0, ClientBuffer.Length, SocketFlags.None, ReadClientData, null);
@@ -116,8 +119,16 @@ namespace Server
         {
             try
             {
-                lock (Settings.Online)
-                    Settings.Online.Remove(this);
+                if (Controler)
+                {
+                    lock (Settings.Controler)
+                        Settings.Controler.Remove(this);
+                }
+                else
+                {
+                    lock (Settings.Online)
+                        Settings.Online.Remove(this);
+                }
             }
             catch { }
 

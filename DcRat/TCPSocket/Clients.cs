@@ -29,7 +29,7 @@ namespace DcRat.TCPSocket
             public string Path;
             public string Active;
             public string Version;
-            public long Permission;
+            public string Permission;
             public string AV;
             public string Group;
             public DateTime LastPing;

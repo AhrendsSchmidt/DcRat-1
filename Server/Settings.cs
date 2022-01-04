@@ -9,6 +9,7 @@ namespace Server
         public static long Sent = 0;
         public static long Received = 0;
         public static string XorKey = "";
+        public static string Password = "";
         public static int Port = 0;
     }
 }

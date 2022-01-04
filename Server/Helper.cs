@@ -28,5 +28,11 @@ namespace Server
             }
             return newByte;
         }
+
+        public static double DiffSeconds(DateTime startTime, DateTime endTime)
+        {
+            TimeSpan secondSpan = new TimeSpan(endTime.Ticks - startTime.Ticks);
+            return Math.Abs(secondSpan.TotalSeconds);
+        }
     }
 }

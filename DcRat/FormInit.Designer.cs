@@ -157,6 +157,7 @@ namespace DcRat
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "FormInit";
             this.Text = "FormInit";
+            this.Load += new System.EventHandler(this.FormInit_Load);
             this.paneltop.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();

