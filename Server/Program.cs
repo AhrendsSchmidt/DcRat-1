@@ -38,9 +38,9 @@ namespace Server
                 msgpack.ForcePathObject("Packet").AsString = "Ping";
                 foreach (Clients CL in Settings.Online.ToList())
                 {
-                    if (Helper.DiffSeconds(CL.LastPing, DateTime.Now) > 20)
+                    if (Helper.DiffSeconds(CL.Info.LastPing, DateTime.Now) > 20)
                     {
-                        //CL.Disconnected();
+                        CL.Disconnected();
                     }
                     else
                     {
@@ -54,9 +54,9 @@ namespace Server
                 msgpack.ForcePathObject("Packet").AsString = "Ping";
                 foreach (Clients CL in Settings.Controler.ToList())
                 {
-                    if (Helper.DiffSeconds(CL.LastPing, DateTime.Now) > 20)
+                    if (Helper.DiffSeconds(CL.Info.LastPing, DateTime.Now) > 20)
                     {
-                        //CL.Disconnected();
+                        CL.Disconnected();
                     }
                     else
                     {

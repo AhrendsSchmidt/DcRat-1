@@ -23,8 +23,8 @@ namespace DcRat.TCPSocket
             public string IP;
             public string User;
             public string OS;
-            public bool Camera;
-            public long InstallType;
+            public string Camera;
+            public string InstallType;
             public string InstallTime;
             public string Path;
             public string Active;

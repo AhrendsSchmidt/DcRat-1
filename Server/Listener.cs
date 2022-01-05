@@ -37,6 +37,7 @@ namespace Server
             try
             {
                 Clients CL = new Clients(listener.EndAccept(ar));
+                CL.Info.LastPing = DateTime.Now;
             }
             catch { }
 

@@ -51,6 +51,7 @@ namespace DcRat
             this.paneltop.Name = "paneltop";
             this.paneltop.Size = new System.Drawing.Size(450, 45);
             this.paneltop.TabIndex = 3;
+            this.paneltop.MouseDown += new System.Windows.Forms.MouseEventHandler(this.paneltop_MouseDown);
             // 
             // labelDcRat
             // 
@@ -66,6 +67,7 @@ namespace DcRat
             this.labelDcRat.TabIndex = 1;
             this.labelDcRat.Text = "DcRat";
             this.labelDcRat.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
+            this.labelDcRat.MouseDown += new System.Windows.Forms.MouseEventHandler(this.labelDcRat_MouseDown);
             // 
             // buttonclose
             // 

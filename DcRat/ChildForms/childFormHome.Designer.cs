@@ -440,7 +440,7 @@ namespace DcRat.ChildForms
         private System.Windows.Forms.ColumnHeader columnHeaderinstall;
         private System.Windows.Forms.ColumnHeader columnHeaderav;
         private System.Windows.Forms.ColumnHeader columnHeaderping;
-        private System.Windows.Forms.ColumnHeader columnHeaderactive;
+        public System.Windows.Forms.ColumnHeader columnHeaderactive;
         private System.Windows.Forms.ImageList imageListicon;
         private System.Windows.Forms.ToolStripButton toolStripButtonicon;
         private System.Windows.Forms.ToolStripButton toolStripButtondetails;

@@ -44,14 +44,14 @@ namespace DcRat
 
             panelleft.BackColor = colorSide;
             paneltop.BackColor = colorSide;
-            buttonabout.BackColor = colorSide; 
-            buttonbuilder.BackColor = colorSide; 
-            buttonclose.BackColor = colorSide; 
-            buttonhome.BackColor = colorSide; 
-            buttonmax.BackColor = colorSide; 
-            buttonmin.BackColor = colorSide; 
-            buttonsettings.BackColor = colorSide; 
-            buttonside.BackColor = colorSide; 
+            buttonabout.BackColor = colorSide;
+            buttonbuilder.BackColor = colorSide;
+            buttonclose.BackColor = colorSide;
+            buttonhome.BackColor = colorSide;
+            buttonmax.BackColor = colorSide;
+            buttonmin.BackColor = colorSide;
+            buttonsettings.BackColor = colorSide;
+            buttonside.BackColor = colorSide;
             buttontasks.BackColor = colorSide;
             labelDcRat.BackColor = colorSide;
 
@@ -62,7 +62,7 @@ namespace DcRat
             buttontasks.ForeColor = colorText;
             labelDcRat.ForeColor = colorText;
 
-            buttonabout.Image = darkTheme?Resources.about: Resources.about_dark;
+            buttonabout.Image = darkTheme ? Resources.about : Resources.about_dark;
             buttonbuilder.Image = darkTheme ? Resources.icon_config : Resources.icon_config_dark;
             buttonclose.Image = darkTheme ? Resources.close : Resources.close_dark;
             buttonhome.Image = darkTheme ? Resources.home : Resources.home__dark;
@@ -319,20 +319,20 @@ namespace DcRat
             this.WindowState = FormWindowState.Minimized;
         }
 
-        private bool previoustheme=false;
+        private bool previoustheme = false;
         private double previousopacity = 97;
         private void updateUI_Tick(object sender, EventArgs e)
         {
-            if (previoustheme!= Settings.Default.darkTheme)
+            if (previoustheme != Settings.Default.darkTheme)
             {
                 previoustheme = Settings.Default.darkTheme;
                 SetTheme();
             }
-            if (previousopacity!= Settings.Default.opacity)
+            if (previousopacity != Settings.Default.opacity)
             {
                 previousopacity = Settings.Default.opacity;
-                
-                this.Opacity = (Settings.Default.opacity) /100;
+
+                this.Opacity = (Settings.Default.opacity) / 100;
             }
         }
 
@@ -356,8 +356,12 @@ namespace DcRat
                 Connection.InitializeClient();
                 while (true)
                 {
-                    if (!Connection.IsConnected)
-                        Connection.Reconnect();
+                    if (!Connection.IsConnected) 
+                    {
+                        MessageBox.Show("Error connection");
+                        Environment.Exit(0);
+                    }
+                    //Connection.Reconnect();
                     Thread.Sleep(new Random().Next(5000));
                 }
             }
@@ -366,11 +370,6 @@ namespace DcRat
                 MessageBox.Show(ex.Message);
                 Environment.Exit(0);
             }
-        }
-
-        private void FormMain_Load(object sender, EventArgs e)
-        {
-            
         }
     }
 }

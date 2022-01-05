@@ -54,6 +54,7 @@ namespace DcRat.SingleForms
             toolStripButtonstop.Image = darkTheme ? Resources.stop_circle : Resources.stop_circle_dark;
         }
         #endregion
+
         #region Border
         private Point mousePoint = new Point();
         Label[] labels = new Label[4];

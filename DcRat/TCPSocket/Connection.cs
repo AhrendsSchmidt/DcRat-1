@@ -191,17 +191,17 @@ namespace DcRat.TCPSocket
             {
                 MsgPack unpack_msgpack = new MsgPack();
                 unpack_msgpack.DecodeFromBytes(Xor((byte[])data));
+                string temp = unpack_msgpack.ForcePathObject("Packet").AsString;
                 switch (unpack_msgpack.ForcePathObject("Packet").AsString)
                 {
-
                     case "ClientInfo":
                         {
                             Clients client = new Clients();
                             client.Info.HWID = unpack_msgpack.ForcePathObject("HWID").AsString;
                             client.Info.User = unpack_msgpack.ForcePathObject("User").AsString;
                             client.Info.OS = unpack_msgpack.ForcePathObject("OS").AsString;
-                            client.Info.Camera = Convert.ToBoolean(unpack_msgpack.ForcePathObject("Camera").AsString);
-                            client.Info.InstallType = unpack_msgpack.ForcePathObject("Install-Type").GetAsInteger();
+                            client.Info.Camera = unpack_msgpack.ForcePathObject("Camera").AsString;
+                            client.Info.InstallType = unpack_msgpack.ForcePathObject("Install-Type").AsString;
                             client.Info.InstallTime = unpack_msgpack.ForcePathObject("Install-Time").AsString;
                             client.Info.Path = unpack_msgpack.ForcePathObject("Path").AsString;
                             client.Info.Version = unpack_msgpack.ForcePathObject("Version").AsString;
@@ -238,6 +238,33 @@ namespace DcRat.TCPSocket
 
                             break;
                         }
+
+                    case "ClientPing": 
+                        {
+                            lock (Setting.LockListviewClients)
+                                foreach (ListViewItem item in FormMain.childForm_Home.listViewHome.Items)
+                                {
+                                    if (item.SubItems[3].Text== unpack_msgpack.ForcePathObject("HWID").AsString)
+                                    {
+                                        item.SubItems[FormMain.childForm_Home.columnHeaderactive.Index].Text = unpack_msgpack.ForcePathObject("Message").AsString;
+                                    }
+                                }
+                        }
+                        break;
+
+                    case "ClientClose":
+                        {
+                            lock (Setting.LockListviewClients)
+                                foreach (ListViewItem item in FormMain.childForm_Home.listViewHome.Items)
+                                {
+                                    if (item.SubItems[3].Text == unpack_msgpack.ForcePathObject("HWID").AsString)
+                                    {
+                                        item.Remove();
+                                    }
+                                }
+                        }
+                        break;
+
                 }
             }
             catch (Exception ex)
